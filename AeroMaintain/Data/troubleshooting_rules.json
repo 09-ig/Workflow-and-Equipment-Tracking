@@ -1,0 +1,67 @@
+[
+  {
+    "Symptom": "Overheating",
+    "PossibleCauses": [
+      "Cooling airflow restriction in intake path",
+      "Lubrication level below operating threshold",
+      "Heat exchanger fouling or partial blockage"
+    ],
+    "RecommendedChecks": [
+      "Verify cooling fan operation and inspect intake screens",
+      "Measure lubricant level and inspect for leaks",
+      "Review last cleaning cycle for heat exchanger assembly"
+    ]
+  },
+  {
+    "Symptom": "Vibration",
+    "PossibleCauses": [
+      "Rotor imbalance after prolonged run cycles",
+      "Bearing wear beyond tolerance band",
+      "Loose mounting frame or fastener torque loss"
+    ],
+    "RecommendedChecks": [
+      "Run balance check at low and nominal RPM",
+      "Inspect bearing temperature and wear pattern",
+      "Confirm frame fasteners using torque checklist"
+    ]
+  },
+  {
+    "Symptom": "Delayed startup",
+    "PossibleCauses": [
+      "Starter relay degradation",
+      "Low supply voltage during initial ignition",
+      "Fuel or hydraulic pre-charge lag"
+    ],
+    "RecommendedChecks": [
+      "Validate relay response time from startup logs",
+      "Measure input voltage during first 10 seconds",
+      "Check line pressure build-up and valve response"
+    ]
+  },
+  {
+    "Symptom": "Abnormal noise",
+    "PossibleCauses": [
+      "Compressor blade contact with debris",
+      "Coupling misalignment between stages",
+      "Damping pads worn or displaced"
+    ],
+    "RecommendedChecks": [
+      "Inspect intake and compressor section for foreign object traces",
+      "Perform shaft alignment check on coupling points",
+      "Inspect damping pad condition and seating"
+    ]
+  },
+  {
+    "Symptom": "Sensor warning",
+    "PossibleCauses": [
+      "Loose connector or intermittent wiring fault",
+      "Sensor drift due to calibration expiry",
+      "Controller firmware threshold mismatch"
+    ],
+    "RecommendedChecks": [
+      "Reseat connector and run continuity test",
+      "Compare sensor reading against calibrated handheld reference",
+      "Review controller threshold profile and latest firmware revision"
+    ]
+  }
+]

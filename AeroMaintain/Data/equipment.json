@@ -1,0 +1,68 @@
+[
+  {
+    "Id": "8af9f883-77f7-45d8-a76f-7433b79fd503",
+    "Name": "Trent XWB Test Stand Fan Module",
+    "SerialNumber": "ENG-TXWB-0421",
+    "Category": "Engine",
+    "LastMaintenanceDate": "2026-03-22T00:00:00",
+    "MaintenanceIntervalDays": 45,
+    "Status": 1,
+    "RecentIssueCount": 2,
+    "Notes": "Intermittent vibration spike above baseline during high-load run."
+  },
+  {
+    "Id": "44253c04-b1ec-4d65-889a-7b209f8e5d9f",
+    "Name": "Auxiliary Power Generator A-17",
+    "SerialNumber": "GEN-A17-1098",
+    "Category": "Generator",
+    "LastMaintenanceDate": "2026-01-28T00:00:00",
+    "MaintenanceIntervalDays": 90,
+    "Status": 2,
+    "RecentIssueCount": 4,
+    "Notes": "Delayed startup on first cycle after cold soak."
+  },
+  {
+    "Id": "09e7f74e-b0d5-43eb-a5ed-4877e53c85f8",
+    "Name": "Hydraulic Cooling Pump P-04",
+    "SerialNumber": "PMP-HC-5504",
+    "Category": "Pump",
+    "LastMaintenanceDate": "2026-04-26T00:00:00",
+    "MaintenanceIntervalDays": 30,
+    "Status": 0,
+    "RecentIssueCount": 0,
+    "Notes": "Operating within expected pressure and temperature range."
+  },
+  {
+    "Id": "f9226f48-93c8-42bf-aaef-9af5c2d1189a",
+    "Name": "Air Intake Compressor C-12",
+    "SerialNumber": "CMP-AI-3312",
+    "Category": "Compressor",
+    "LastMaintenanceDate": "2026-02-15T00:00:00",
+    "MaintenanceIntervalDays": 60,
+    "Status": 1,
+    "RecentIssueCount": 3,
+    "Notes": "Acoustic signature drift detected during shift B."
+  },
+  {
+    "Id": "f3f6a945-ae48-44e8-ab47-f050dc11fbec",
+    "Name": "Gas Turbine Stage 2 Bench Unit",
+    "SerialNumber": "TRB-GS2-8871",
+    "Category": "Turbine",
+    "LastMaintenanceDate": "2026-05-03T00:00:00",
+    "MaintenanceIntervalDays": 50,
+    "Status": 0,
+    "RecentIssueCount": 1,
+    "Notes": "Stable operation after nozzle guide vane calibration."
+  },
+  {
+    "Id": "ca95f651-88d3-41cf-b499-74caea0240e2",
+    "Name": "Fuel Metering Control Panel CP-9",
+    "SerialNumber": "CTL-FM-2209",
+    "Category": "Control Panel",
+    "LastMaintenanceDate": "2026-03-07T00:00:00",
+    "MaintenanceIntervalDays": 75,
+    "Status": 0,
+    "RecentIssueCount": 1,
+    "Notes": "One sensor warning cleared after cable reseat."
+  }
+]

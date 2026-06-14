@@ -1,0 +1,15 @@
+# Build output
+**/bin/
+**/obj/
+**/TestResults/
+**/Exports/
+
+# Visual Studio and user-specific files
+.vs/
+*.user
+*.suo
+*.cache
+
+# Operating system files
+.DS_Store
+Thumbs.db
