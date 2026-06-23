@@ -39,6 +39,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _reportPreview = "No report generated yet.";
     private string _selectedStatusFilter = "All";
     private string _selectedDueFilter = "All";
+    private string _searchText = string.Empty;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -152,6 +153,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         set => SetProperty(ref _selectedDueFilter, value);
     }
 
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (string.Equals(_searchText, value, StringComparison.Ordinal)) return;
+            _searchText = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SearchText)));
+            RefreshEquipmentGrid();
+        }
+    }
+
     public MainWindow()
     {
         InitializeComponent();
@@ -209,14 +222,22 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void RefreshEquipmentGrid()
     {
         EquipmentItems.Clear();
-        foreach (var equipment in _equipmentStore.OrderBy(e => e.NextDueDate).ThenBy(e => e.Name))
+
+        var filtered = string.IsNullOrWhiteSpace(_searchText)
+            ? _equipmentStore
+            : _equipmentStore.Where(e =>
+                e.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                e.SerialNumber.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                e.Category.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+
+        foreach (var equipment in filtered.OrderBy(e => e.NextDueDate).ThenBy(e => e.Name))
         {
             EquipmentItems.Add(equipment);
         }
 
         FleetEmptyState = _equipmentStore.Count == 0
             ? "Empty state: no equipment in registry. Add your first unit to activate scheduler and analytics."
-            : $"{_equipmentStore.Count} equipment items registered. Select a row to edit.";
+            : $"{EquipmentItems.Count} of {_equipmentStore.Count} items shown. Select a row to edit.";
     }
 
     private void RefreshScheduler()
@@ -345,6 +366,33 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         ClearForm();
         RegistryNote = "Form cleared. Ready for a new entry.";
+    }
+
+    private void ClearSearchButton_Click(object sender, RoutedEventArgs e)
+    {
+        SearchText = string.Empty;
+    }
+
+    private async void MarkMaintainedButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedEquipment is null)
+        {
+            RegistryNote = "Select a row first, then mark as maintained.";
+            return;
+        }
+
+        var existing = _equipmentStore.FirstOrDefault(eq => eq.Id == SelectedEquipment.Id);
+        if (existing is null)
+        {
+            RegistryNote = "Selected item no longer exists.";
+            return;
+        }
+
+        existing.LastMaintenanceDate = DateTime.Today;
+        RegistryNote = $"Marked {existing.Name} as maintained on {DateTime.Today:yyyy-MM-dd}.";
+        await PersistEquipmentAsync();
+        RefreshAllViews();
+        ClearForm();
     }
 
     private void ClearForm()

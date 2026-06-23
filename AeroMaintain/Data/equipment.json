@@ -26,7 +26,7 @@
     "Name": "Hydraulic Cooling Pump P-04",
     "SerialNumber": "PMP-HC-5504",
     "Category": "Pump",
-    "LastMaintenanceDate": "2026-04-26T00:00:00",
+    "LastMaintenanceDate": "2026-05-28T00:00:00",
     "MaintenanceIntervalDays": 30,
     "Status": 0,
     "RecentIssueCount": 0,
@@ -48,7 +48,7 @@
     "Name": "Gas Turbine Stage 2 Bench Unit",
     "SerialNumber": "TRB-GS2-8871",
     "Category": "Turbine",
-    "LastMaintenanceDate": "2026-05-03T00:00:00",
+    "LastMaintenanceDate": "2026-06-10T00:00:00",
     "MaintenanceIntervalDays": 50,
     "Status": 0,
     "RecentIssueCount": 1,
@@ -59,10 +59,54 @@
     "Name": "Fuel Metering Control Panel CP-9",
     "SerialNumber": "CTL-FM-2209",
     "Category": "Control Panel",
-    "LastMaintenanceDate": "2026-03-07T00:00:00",
+    "LastMaintenanceDate": "2026-06-01T00:00:00",
     "MaintenanceIntervalDays": 75,
     "Status": 0,
     "RecentIssueCount": 1,
     "Notes": "One sensor warning cleared after cable reseat."
+  },
+  {
+    "Id": "b3e1d4a7-5c2f-4891-b6d3-8f9e0a1c2b3d",
+    "Name": "Hydraulic Actuator Assembly H-07",
+    "SerialNumber": "HYD-ACT-H07",
+    "Category": "Hydraulic System",
+    "LastMaintenanceDate": "2026-06-01T00:00:00",
+    "MaintenanceIntervalDays": 45,
+    "Status": 0,
+    "RecentIssueCount": 0,
+    "Notes": "Seal inspection passed. Fluid levels within spec."
+  },
+  {
+    "Id": "c4f2e5b8-6d3a-4902-c7e4-9a0f1b2c3d4e",
+    "Name": "Pneumatic Compressor Stage 3 C-33",
+    "SerialNumber": "CMP-PN3-C33",
+    "Category": "Compressor",
+    "LastMaintenanceDate": "2026-05-15T00:00:00",
+    "MaintenanceIntervalDays": 30,
+    "Status": 2,
+    "RecentIssueCount": 5,
+    "Notes": "Pressure drop detected at stage 3 outlet. Awaiting inspection."
+  },
+  {
+    "Id": "d5a3f6c9-7e4b-4013-d8f5-0b1a2c3d4e5f",
+    "Name": "High-Pressure Turbine Rotor T-88",
+    "SerialNumber": "TRB-HPT-T88",
+    "Category": "Turbine",
+    "LastMaintenanceDate": "2026-06-10T00:00:00",
+    "MaintenanceIntervalDays": 60,
+    "Status": 1,
+    "RecentIssueCount": 2,
+    "Notes": "Blade tip clearance trending toward upper tolerance. Monitor closely."
+  },
+  {
+    "Id": "e6b4a7d0-8f5c-4124-e9a6-1c2b3d4e5f6a",
+    "Name": "Emergency Generator Backup EGB-5",
+    "SerialNumber": "GEN-EGB-005",
+    "Category": "Generator",
+    "LastMaintenanceDate": "2026-01-15T00:00:00",
+    "MaintenanceIntervalDays": 180,
+    "Status": 0,
+    "RecentIssueCount": 0,
+    "Notes": "Standby unit. Load test completed satisfactorily in January."
   }
 ]

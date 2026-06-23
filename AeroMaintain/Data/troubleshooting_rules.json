@@ -63,5 +63,44 @@
       "Compare sensor reading against calibrated handheld reference",
       "Review controller threshold profile and latest firmware revision"
     ]
+  },
+  {
+    "Symptom": "Pressure drop",
+    "PossibleCauses": [
+      "Seal or gasket degradation at stage outlet",
+      "Partial blockage in downstream line or filter",
+      "Control valve not reaching full-open position"
+    ],
+    "RecommendedChecks": [
+      "Perform seal integrity test at rated operating pressure",
+      "Inspect downstream filter housing and replace if saturated",
+      "Log valve actuator travel and compare with baseline stroke"
+    ]
+  },
+  {
+    "Symptom": "Oil or fluid leak",
+    "PossibleCauses": [
+      "O-ring or lip seal failure at fitting junction",
+      "Crack or micro-fracture in fluid line",
+      "Loose drain plug or inspection cover"
+    ],
+    "RecommendedChecks": [
+      "Pressure-test fluid circuit with dye tracer to locate origin",
+      "Visually inspect all fittings and lines for wet marks or residue",
+      "Torque-verify drain plug and all access covers to specification"
+    ]
+  },
+  {
+    "Symptom": "Electrical fault",
+    "PossibleCauses": [
+      "Corroded terminal or bus bar connection",
+      "Blown protection fuse or tripped circuit breaker",
+      "Ground loop or insulation breakdown in cable harness"
+    ],
+    "RecommendedChecks": [
+      "Measure terminal resistance and clean corrosion with contact spray",
+      "Identify and replace blown fuse; trace root cause before reset",
+      "Run insulation resistance test on suspect harness segments"
+    ]
   }
 ]
