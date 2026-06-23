@@ -176,7 +176,19 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        await LoadDataAsync();
+        try
+        {
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Could not load saved data.\n\n{ex.Message}\n\nThe app will start with an empty registry.",
+                "Load Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+
         RefreshAllViews();
         LoadSymptomOptions();
         if (SymptomOptions.Count > 0)
@@ -480,31 +492,63 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void ExportTasksCsvButton_Click(object sender, RoutedEventArgs e)
     {
-        var path = _exportService.ExportTasksCsv(FilteredTasks, GetExportDirectory());
-        LastExportMessage = $"Tasks exported: {path}";
+        try
+        {
+            var path = _exportService.ExportTasksCsv(FilteredTasks, GetExportDirectory());
+            LastExportMessage = $"Tasks exported: {path}";
+        }
+        catch (Exception ex)
+        {
+            LastExportMessage = $"Export failed: {ex.Message}";
+        }
     }
 
     private void ExportEquipmentCsvButton_Click(object sender, RoutedEventArgs e)
     {
-        var path = _exportService.ExportEquipmentCsv(_equipmentStore, GetExportDirectory());
-        LastExportMessage = $"Equipment exported: {path}";
+        try
+        {
+            var path = _exportService.ExportEquipmentCsv(_equipmentStore, GetExportDirectory());
+            LastExportMessage = $"Equipment exported: {path}";
+        }
+        catch (Exception ex)
+        {
+            LastExportMessage = $"Export failed: {ex.Message}";
+        }
     }
 
     private void GenerateReportButton_Click(object sender, RoutedEventArgs e)
     {
-        var path = _exportService.BuildTextReport(
-            _equipmentStore,
-            _allTasks,
-            _healthScoreService.CalculateAverageScore(_equipmentStore, DateTime.Today),
-            GetExportDirectory());
+        try
+        {
+            var path = _exportService.BuildTextReport(
+                _equipmentStore,
+                _allTasks,
+                _healthScoreService.CalculateAverageScore(_equipmentStore, DateTime.Today),
+                GetExportDirectory());
 
-        ReportPreview = File.ReadAllText(path, Encoding.UTF8);
-        LastExportMessage = $"Report generated: {path}";
+            ReportPreview = File.ReadAllText(path, Encoding.UTF8);
+            LastExportMessage = $"Report generated: {path}";
+        }
+        catch (Exception ex)
+        {
+            LastExportMessage = $"Report generation failed: {ex.Message}";
+        }
     }
 
     private async Task PersistEquipmentAsync()
     {
-        await _dataService.SaveEquipmentAsync(_equipmentStore);
+        try
+        {
+            await _dataService.SaveEquipmentAsync(_equipmentStore);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Failed to save equipment data.\n\n{ex.Message}",
+                "Save Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
     }
 
     private static void SetComboBoxSelection(ComboBox comboBox, string target)
@@ -593,7 +637,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private static string GetExportDirectory()
     {
-        return Path.Combine(AppContext.BaseDirectory, "Exports");
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "AeroMaintain",
+            "Exports");
     }
 
     private void SetProperty<T>(ref T storage, T value, [CallerMemberName] string? propertyName = null)

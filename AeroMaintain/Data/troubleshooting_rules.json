@@ -102,5 +102,31 @@
       "Identify and replace blown fuse; trace root cause before reset",
       "Run insulation resistance test on suspect harness segments"
     ]
+  },
+  {
+    "Symptom": "Excessive temperature",
+    "PossibleCauses": [
+      "Coolant flow rate below design specification",
+      "Ambient temperature exceeding rated operating envelope",
+      "Thermal insulation degraded or missing from hot sections"
+    ],
+    "RecommendedChecks": [
+      "Verify coolant pump output and flow meter readings against datasheet",
+      "Log ambient and component temperatures over a full duty cycle",
+      "Inspect insulation wrapping and thermal barrier integrity visually"
+    ]
+  },
+  {
+    "Symptom": "Contamination or fouling",
+    "PossibleCauses": [
+      "Ingested particulates bypassing inlet filter",
+      "Degraded lubricant leading to varnish or sludge build-up",
+      "External chemical exposure causing surface deposit"
+    ],
+    "RecommendedChecks": [
+      "Pull and inspect inlet filter; measure differential pressure across element",
+      "Send lubricant sample for spectrographic analysis",
+      "Visually inspect internal surfaces and flush if deposit is confirmed"
+    ]
   }
 ]

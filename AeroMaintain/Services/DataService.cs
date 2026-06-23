@@ -16,7 +16,7 @@ public class DataService
     private readonly string _equipmentPath;
     private readonly string _troubleshootingPath;
 
-    public DataService() : this(Path.Combine(AppContext.BaseDirectory, "Data")) { }
+    public DataService() : this(ResolveDataDirectory()) { }
 
     public DataService(string dataDirectory)
     {
@@ -27,6 +27,39 @@ public class DataService
         if (!Directory.Exists(_dataDirectory))
         {
             Directory.CreateDirectory(_dataDirectory);
+        }
+    }
+
+    // Resolves to %LocalAppData%\AeroMaintain\Data on first run, seeding from the
+    // installation directory so the app ships with data out of the box.
+    private static string ResolveDataDirectory()
+    {
+        var appDataDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AeroMaintain",
+            "Data");
+
+        if (!Directory.Exists(appDataDir))
+        {
+            Directory.CreateDirectory(appDataDir);
+            SeedFromInstallation(appDataDir);
+        }
+
+        return appDataDir;
+    }
+
+    private static void SeedFromInstallation(string targetDir)
+    {
+        var sourceDir = Path.Combine(AppContext.BaseDirectory, "Data");
+        if (!Directory.Exists(sourceDir)) return;
+
+        foreach (var sourceFile in Directory.EnumerateFiles(sourceDir, "*.json"))
+        {
+            var destFile = Path.Combine(targetDir, Path.GetFileName(sourceFile));
+            if (!File.Exists(destFile))
+            {
+                File.Copy(sourceFile, destFile);
+            }
         }
     }
 

@@ -207,6 +207,11 @@
                                 <ComboBoxItem Content="Turbine" />
                                 <ComboBoxItem Content="Hydraulic System" />
                                 <ComboBoxItem Content="Control Panel" />
+                                <ComboBoxItem Content="Electrical Motor" />
+                                <ComboBoxItem Content="Heat Exchanger" />
+                                <ComboBoxItem Content="Valve Assembly" />
+                                <ComboBoxItem Content="Gearbox" />
+                                <ComboBoxItem Content="Bearing Assembly" />
                             </ComboBox>
 
                             <TextBlock Text="Last Maintenance Date" />

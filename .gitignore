@@ -4,12 +4,24 @@
 **/TestResults/
 **/Exports/
 
+# Publish output
+publish/
+
 # Visual Studio and user-specific files
 .vs/
 *.user
 *.suo
 *.cache
+*.pubxml.user
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
 
 # Operating system files
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log
