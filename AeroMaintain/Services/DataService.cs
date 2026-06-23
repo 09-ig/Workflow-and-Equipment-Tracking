@@ -16,9 +16,11 @@ public class DataService
     private readonly string _equipmentPath;
     private readonly string _troubleshootingPath;
 
-    public DataService()
+    public DataService() : this(Path.Combine(AppContext.BaseDirectory, "Data")) { }
+
+    public DataService(string dataDirectory)
     {
-        _dataDirectory = Path.Combine(AppContext.BaseDirectory, "Data");
+        _dataDirectory = dataDirectory;
         _equipmentPath = Path.Combine(_dataDirectory, "equipment.json");
         _troubleshootingPath = Path.Combine(_dataDirectory, "troubleshooting_rules.json");
 
