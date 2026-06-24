@@ -11,11 +11,12 @@ public class DataServiceTests : IDisposable
 
     public DataServiceTests()
     {
-        _service = new DataService(_tempDir);
+        Directory.CreateDirectory(_tempDir);
+        _service = new DataService(Path.Combine(_tempDir, "test.db"));
     }
 
     [Fact]
-    public async Task LoadEquipment_ReturnsEmptyList_WhenFileDoesNotExist()
+    public async Task LoadEquipment_ReturnsEmptyList_WhenDatabaseIsEmpty()
     {
         var result = await _service.LoadEquipmentAsync();
 
@@ -23,7 +24,7 @@ public class DataServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task LoadTroubleshootingRules_ReturnsEmptyList_WhenFileDoesNotExist()
+    public async Task LoadTroubleshootingRules_ReturnsEmptyList_WhenDatabaseIsEmpty()
     {
         var result = await _service.LoadTroubleshootingRulesAsync();
 
@@ -62,17 +63,17 @@ public class DataServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SaveEquipment_OverwritesPreviousData_OnSecondSave()
+    public async Task SaveEquipment_RemovesDeletedItems_OnSync()
     {
-        var first = new Equipment { Name = "First Unit", SerialNumber = "F-001", Status = EquipmentStatus.Healthy };
-        var second = new Equipment { Name = "Second Unit", SerialNumber = "S-001", Status = EquipmentStatus.Critical };
+        var first  = new Equipment { Name = "First",  SerialNumber = "F-001", Status = EquipmentStatus.Healthy };
+        var second = new Equipment { Name = "Second", SerialNumber = "S-001", Status = EquipmentStatus.Critical };
 
-        await _service.SaveEquipmentAsync([first]);
-        await _service.SaveEquipmentAsync([second]);
+        await _service.SaveEquipmentAsync([first, second]);
+        await _service.SaveEquipmentAsync([second]);   // remove first
+
         var loaded = await _service.LoadEquipmentAsync();
-
         var item = Assert.Single(loaded);
-        Assert.Equal("Second Unit", item.Name);
+        Assert.Equal("Second", item.Name);
     }
 
     [Fact]
@@ -95,7 +96,7 @@ public class DataServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task JsonIgnoreFields_AreNotPersisted_HealthScoreNotRestored()
+    public async Task ComputedFields_AreNotPersisted_HealthScoreResetOnLoad()
     {
         var original = new Equipment
         {
@@ -110,15 +111,13 @@ public class DataServiceTests : IDisposable
         var loaded = await _service.LoadEquipmentAsync();
 
         var item = Assert.Single(loaded);
-        Assert.Equal(0, item.HealthScore);
-        Assert.Equal("Stable", item.HealthLabel);
+        Assert.Equal(0, item.HealthScore);       // not persisted
+        Assert.Equal("Stable", item.HealthLabel); // default value from model
     }
 
     public void Dispose()
     {
         if (Directory.Exists(_tempDir))
-        {
             Directory.Delete(_tempDir, recursive: true);
-        }
     }
 }

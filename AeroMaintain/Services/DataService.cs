@@ -1,95 +1,108 @@
 using System.IO;
 using System.Text.Json;
+using AeroMaintain.Data;
 using AeroMaintain.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace AeroMaintain.Services;
 
 public class DataService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private readonly string _dbPath;
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    public DataService() : this(ResolveDbPath()) { }
+
+    public DataService(string dbPath)
     {
-        PropertyNameCaseInsensitive = true,
-        WriteIndented = true
-    };
-
-    private readonly string _dataDirectory;
-    private readonly string _equipmentPath;
-    private readonly string _troubleshootingPath;
-
-    public DataService() : this(ResolveDataDirectory()) { }
-
-    public DataService(string dataDirectory)
-    {
-        _dataDirectory = dataDirectory;
-        _equipmentPath = Path.Combine(_dataDirectory, "equipment.json");
-        _troubleshootingPath = Path.Combine(_dataDirectory, "troubleshooting_rules.json");
-
-        if (!Directory.Exists(_dataDirectory))
-        {
-            Directory.CreateDirectory(_dataDirectory);
-        }
-    }
-
-    // Resolves to %LocalAppData%\AeroMaintain\Data on first run, seeding from the
-    // installation directory so the app ships with data out of the box.
-    private static string ResolveDataDirectory()
-    {
-        var appDataDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "AeroMaintain",
-            "Data");
-
-        if (!Directory.Exists(appDataDir))
-        {
-            Directory.CreateDirectory(appDataDir);
-            SeedFromInstallation(appDataDir);
-        }
-
-        return appDataDir;
-    }
-
-    private static void SeedFromInstallation(string targetDir)
-    {
-        var sourceDir = Path.Combine(AppContext.BaseDirectory, "Data");
-        if (!Directory.Exists(sourceDir)) return;
-
-        foreach (var sourceFile in Directory.EnumerateFiles(sourceDir, "*.json"))
-        {
-            var destFile = Path.Combine(targetDir, Path.GetFileName(sourceFile));
-            if (!File.Exists(destFile))
-            {
-                File.Copy(sourceFile, destFile);
-            }
-        }
+        _dbPath = dbPath;
+        using var ctx = CreateContext();
+        ctx.Database.EnsureCreated();
     }
 
     public async Task<List<Equipment>> LoadEquipmentAsync()
     {
-        if (!File.Exists(_equipmentPath))
+        await using var ctx = CreateContext();
+        var items = await ctx.Equipment.ToListAsync();
+        if (items.Count == 0)
         {
-            return new List<Equipment>();
+            await SeedEquipmentFromJsonAsync();
+            await using var ctx2 = CreateContext();
+            items = await ctx2.Equipment.ToListAsync();
         }
-
-        await using var stream = File.OpenRead(_equipmentPath);
-        var items = await JsonSerializer.DeserializeAsync<List<Equipment>>(stream, JsonOptions);
-        return items ?? new List<Equipment>();
+        return items;
     }
 
     public async Task SaveEquipmentAsync(IEnumerable<Equipment> equipment)
     {
-        await using var stream = File.Create(_equipmentPath);
-        await JsonSerializer.SerializeAsync(stream, equipment, JsonOptions);
+        var incoming = equipment.ToList();
+        await using var ctx = CreateContext();
+        var existing = await ctx.Equipment.ToListAsync();
+
+        var toDelete = existing.Where(e => incoming.All(n => n.Id != e.Id)).ToList();
+        ctx.Equipment.RemoveRange(toDelete);
+
+        foreach (var item in incoming)
+        {
+            var tracked = existing.FirstOrDefault(e => e.Id == item.Id);
+            if (tracked is null)
+                ctx.Equipment.Add(item);
+            else
+                ctx.Entry(tracked).CurrentValues.SetValues(item);
+        }
+
+        await ctx.SaveChangesAsync();
     }
 
     public async Task<List<TroubleshootingRule>> LoadTroubleshootingRulesAsync()
     {
-        if (!File.Exists(_troubleshootingPath))
+        await using var ctx = CreateContext();
+        var rules = await ctx.TroubleshootingRules.ToListAsync();
+        if (rules.Count == 0)
         {
-            return new List<TroubleshootingRule>();
+            await SeedRulesFromJsonAsync();
+            await using var ctx2 = CreateContext();
+            rules = await ctx2.TroubleshootingRules.ToListAsync();
         }
+        return rules;
+    }
 
-        await using var stream = File.OpenRead(_troubleshootingPath);
+    private async Task SeedEquipmentFromJsonAsync()
+    {
+        var jsonPath = Path.Combine(AppContext.BaseDirectory, "Data", "equipment.json");
+        if (!File.Exists(jsonPath)) return;
+
+        await using var stream = File.OpenRead(jsonPath);
+        var items = await JsonSerializer.DeserializeAsync<List<Equipment>>(stream, JsonOptions);
+        if (items is null) return;
+
+        await using var ctx = CreateContext();
+        ctx.Equipment.AddRange(items);
+        await ctx.SaveChangesAsync();
+    }
+
+    private async Task SeedRulesFromJsonAsync()
+    {
+        var jsonPath = Path.Combine(AppContext.BaseDirectory, "Data", "troubleshooting_rules.json");
+        if (!File.Exists(jsonPath)) return;
+
+        await using var stream = File.OpenRead(jsonPath);
         var rules = await JsonSerializer.DeserializeAsync<List<TroubleshootingRule>>(stream, JsonOptions);
-        return rules ?? new List<TroubleshootingRule>();
+        if (rules is null) return;
+
+        await using var ctx = CreateContext();
+        ctx.TroubleshootingRules.AddRange(rules);
+        await ctx.SaveChangesAsync();
+    }
+
+    private AeroMaintainDbContext CreateContext() => new(_dbPath);
+
+    private static string ResolveDbPath()
+    {
+        var dir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AeroMaintain");
+        Directory.CreateDirectory(dir);
+        return Path.Combine(dir, "aeromaintain.db");
     }
 }

@@ -17,6 +17,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly HealthScoreService _healthScoreService = new();
     private readonly TroubleshootingService _troubleshootingService = new();
     private readonly ExportService _exportService = new();
+    private readonly CsvImportService _csvImportService = new();
 
     private readonly List<Equipment> _equipmentStore = new();
     private readonly List<TroubleshootingRule> _rules = new();
@@ -532,6 +533,54 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         catch (Exception ex)
         {
             LastExportMessage = $"Report generation failed: {ex.Message}";
+        }
+    }
+
+    private async void ImportCsvButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Import Equipment from CSV",
+            Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
+            DefaultExt = ".csv"
+        };
+
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            var result = _csvImportService.Import(dialog.FileName);
+
+            if (result.Errors.Count > 0 && result.Imported.Count == 0)
+            {
+                RegistryNote = $"Import failed: {result.Errors[0]}";
+                return;
+            }
+
+            int added = 0, duplicates = 0;
+            foreach (var item in result.Imported)
+            {
+                if (_equipmentStore.Any(eq => eq.SerialNumber.Equals(item.SerialNumber, StringComparison.OrdinalIgnoreCase)))
+                {
+                    duplicates++;
+                    continue;
+                }
+                _equipmentStore.Add(item);
+                added++;
+            }
+
+            await PersistEquipmentAsync();
+            RefreshAllViews();
+
+            var note = $"Imported {added} records from CSV.";
+            if (duplicates > 0) note += $" {duplicates} skipped (duplicate serial).";
+            if (result.SkippedRows > 0) note += $" {result.SkippedRows} empty rows ignored.";
+            if (result.Errors.Count > 0) note += $" {result.Errors.Count} row parse errors.";
+            RegistryNote = note;
+        }
+        catch (Exception ex)
+        {
+            RegistryNote = $"Import error: {ex.Message}";
         }
     }
 

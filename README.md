@@ -184,18 +184,4 @@ dotnet test AeroMaintain.Tests --logger "console;verbosity=normal"
 7. Go to **Reports and Export**, generate the text report, and export both CSV files.
 8. Open the `Exports/` folder beside the executable and inspect the generated files.
 
----
 
-## Possible Next Steps
-
-- Move user-modified data from the build output folder to `%LOCALAPPDATA%\AeroMaintain`.
-- Add a maintenance history log instead of storing only the latest service date.
-- Full MVVM with `ICommand`-based view models and a dependency injection container.
-- A CI workflow (GitHub Actions) that runs restore → Release build → test on every push.
-- A versioned Windows installer published from the Actions release pipeline.
-
----
-
-## Scope
-
-AeroMaintain is a portfolio and learning project. Its troubleshooting output is rule-based demonstration guidance, not a substitute for approved maintenance procedures or certified engineering judgement.
