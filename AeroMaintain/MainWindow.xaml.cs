@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -21,6 +22,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private readonly List<Equipment> _equipmentStore = new();
     private readonly List<TroubleshootingRule> _rules = new();
+    private readonly List<MaintenanceLog> _maintenanceLogStore = new();
+    private readonly List<AuditLog> _auditLogStore = new();
     private List<MaintenanceTask> _allTasks = new();
     private Guid? _editingEquipmentId;
 
@@ -38,6 +41,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _selectedSymptomTitle = "Guided Checks";
     private string _lastExportMessage = "Exports will be saved under the local Exports folder.";
     private string _reportPreview = "No report generated yet.";
+    private string _historyNote = "Select equipment to focus its maintenance history.";
+    private string _auditNote = "Audit events will appear after equipment changes.";
     private string _selectedStatusFilter = "All";
     private string _selectedDueFilter = "All";
     private string _searchText = string.Empty;
@@ -50,6 +55,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public ObservableCollection<string> SymptomOptions { get; } = new();
     public ObservableCollection<string> PossibleCauses { get; } = new();
     public ObservableCollection<string> RecommendedChecks { get; } = new();
+    public ObservableCollection<MaintenanceLog> MaintenanceHistory { get; } = new();
+    public ObservableCollection<AuditLog> AuditTrail { get; } = new();
 
     public List<string> StatusFilterOptions { get; } = new() { "All", "Healthy", "Watch", "Critical" };
     public List<string> DueFilterOptions { get; } = new() { "All", "Overdue", "Due within 7 days", "Due within 30 days" };
@@ -142,6 +149,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         set => SetProperty(ref _reportPreview, value);
     }
 
+    public string HistoryNote
+    {
+        get => _historyNote;
+        set => SetProperty(ref _historyNote, value);
+    }
+
+    public string AuditNote
+    {
+        get => _auditNote;
+        set => SetProperty(ref _auditNote, value);
+    }
+
     public string SelectedStatusFilter
     {
         get => _selectedStatusFilter;
@@ -173,6 +192,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         LastMaintenanceDatePicker.SelectedDate = DateTime.Today;
         IntervalTextBox.Text = "30";
         IssueCountTextBox.Text = "0";
+        MaintenancePerformedByTextBox.Text = Environment.UserName;
+        MaintenanceSummaryTextBox.Text = "Routine maintenance completed.";
+        MaintenancePartsTextBox.Text = "None";
+        MaintenanceLaborHoursTextBox.Text = "0";
+        MaintenanceCostTextBox.Text = "0";
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -207,6 +231,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         var loadedRules = await _dataService.LoadTroubleshootingRulesAsync();
         _rules.Clear();
         _rules.AddRange(loadedRules);
+
+        var maintenanceLogs = await _dataService.LoadMaintenanceLogsAsync(take: 500);
+        _maintenanceLogStore.Clear();
+        _maintenanceLogStore.AddRange(maintenanceLogs);
+
+        var auditLogs = await _dataService.LoadAuditLogsAsync(500);
+        _auditLogStore.Clear();
+        _auditLogStore.AddRange(auditLogs);
     }
 
     private void RefreshAllViews()
@@ -214,6 +246,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         RecalculateFleetHealth();
         RefreshEquipmentGrid();
         RefreshScheduler();
+        RefreshHistoryViews();
     }
 
     private void RecalculateFleetHealth()
@@ -280,6 +313,52 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         AtRiskNote = AtRiskTasks.Count == 0
             ? "No urgent items. Current fleet condition is stable."
             : $"{AtRiskTasks.Count} priority items listed. Review due dates and assign checks.";
+    }
+
+    private async Task RefreshProductionRecordsAsync()
+    {
+        var maintenanceLogs = await _dataService.LoadMaintenanceLogsAsync(take: 500);
+        _maintenanceLogStore.Clear();
+        _maintenanceLogStore.AddRange(maintenanceLogs);
+
+        var auditLogs = await _dataService.LoadAuditLogsAsync(500);
+        _auditLogStore.Clear();
+        _auditLogStore.AddRange(auditLogs);
+
+        RefreshHistoryViews();
+    }
+
+    private void RefreshHistoryViews()
+    {
+        MaintenanceHistory.Clear();
+
+        var selectedId = SelectedEquipment?.Id;
+        var logs = selectedId.HasValue
+            ? _maintenanceLogStore.Where(l => l.EquipmentId == selectedId.Value)
+            : _maintenanceLogStore;
+
+        foreach (var log in logs
+                     .OrderByDescending(l => l.CompletedOn)
+                     .ThenByDescending(l => l.LoggedAtUtc))
+        {
+            MaintenanceHistory.Add(log);
+        }
+
+        HistoryNote = selectedId.HasValue && SelectedEquipment is not null
+            ? $"{MaintenanceHistory.Count} maintenance log entries for {SelectedEquipment.Name}."
+            : $"{MaintenanceHistory.Count} recent maintenance log entries shown across the fleet.";
+
+        AuditTrail.Clear();
+        foreach (var audit in _auditLogStore
+                     .OrderByDescending(a => a.ChangedAtUtc)
+                     .Take(200))
+        {
+            AuditTrail.Add(audit);
+        }
+
+        AuditNote = AuditTrail.Count == 0
+            ? "No audit events recorded yet."
+            : $"{AuditTrail.Count} recent audit events shown.";
     }
 
     private void ApplySchedulerFilters()
@@ -372,7 +451,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private async void PersistButton_Click(object sender, RoutedEventArgs e)
     {
         await PersistEquipmentAsync();
-        RegistryNote = "Equipment registry persisted to JSON.";
+        RegistryNote = "Equipment registry saved to the local database.";
     }
 
     private void ClearFormButton_Click(object sender, RoutedEventArgs e)
@@ -390,7 +469,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         if (SelectedEquipment is null)
         {
-            RegistryNote = "Select a row first, then mark as maintained.";
+            RegistryNote = "Select a row first, then log maintenance.";
             return;
         }
 
@@ -401,11 +480,44 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
         }
 
-        existing.LastMaintenanceDate = DateTime.Today;
-        RegistryNote = $"Marked {existing.Name} as maintained on {DateTime.Today:yyyy-MM-dd}.";
-        await PersistEquipmentAsync();
-        RefreshAllViews();
-        ClearForm();
+        if (!TryBuildMaintenanceLogDetails(
+                out var performedBy,
+                out var summary,
+                out var parts,
+                out var cost,
+                out var laborHours,
+                out var notes))
+        {
+            return;
+        }
+
+        try
+        {
+            var log = await _dataService.RecordMaintenanceAsync(
+                existing.Id,
+                performedBy,
+                summary,
+                parts,
+                cost,
+                laborHours,
+                DateTime.Today,
+                notes,
+                Environment.UserName);
+
+            existing.LastMaintenanceDate = log.CompletedOn;
+            RegistryNote = $"Logged maintenance for {existing.Name} on {log.CompletedOn:yyyy-MM-dd}.";
+            await RefreshProductionRecordsAsync();
+            RefreshAllViews();
+            ClearForm();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Failed to log maintenance.\n\n{ex.Message}",
+                "Maintenance Log Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
     }
 
     private void ClearForm()
@@ -425,8 +537,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
         IssueCountTextBox.Text = "0";
         NotesTextBox.Text = string.Empty;
+        MaintenancePerformedByTextBox.Text = Environment.UserName;
+        MaintenanceSummaryTextBox.Text = "Routine maintenance completed.";
+        MaintenancePartsTextBox.Text = "None";
+        MaintenanceLaborHoursTextBox.Text = "0";
+        MaintenanceCostTextBox.Text = "0";
+        MaintenanceNotesTextBox.Text = string.Empty;
         EquipmentDataGrid.SelectedItem = null;
         SelectedEquipment = null;
+        RefreshHistoryViews();
     }
 
     private void EquipmentDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -447,6 +566,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         IssueCountTextBox.Text = selected.RecentIssueCount.ToString();
         NotesTextBox.Text = selected.Notes;
         RegistryNote = $"Editing {selected.Name}. Click Save Equipment to apply updates.";
+        RefreshHistoryViews();
     }
 
     private void SchedulerFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -588,7 +708,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         try
         {
-            await _dataService.SaveEquipmentAsync(_equipmentStore);
+            await _dataService.SaveEquipmentAsync(_equipmentStore, Environment.UserName);
+            await RefreshProductionRecordsAsync();
         }
         catch (Exception ex)
         {
@@ -680,6 +801,51 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             RecentIssueCount = issueCount,
             Notes = notes
         };
+
+        return true;
+    }
+
+    private bool TryBuildMaintenanceLogDetails(
+        out string performedBy,
+        out string summary,
+        out string parts,
+        out decimal cost,
+        out double laborHours,
+        out string notes)
+    {
+        performedBy = MaintenancePerformedByTextBox.Text.Trim();
+        summary = MaintenanceSummaryTextBox.Text.Trim();
+        parts = MaintenancePartsTextBox.Text.Trim();
+        notes = MaintenanceNotesTextBox.Text.Trim();
+        cost = 0;
+        laborHours = 0;
+
+        if (string.IsNullOrWhiteSpace(performedBy))
+        {
+            performedBy = Environment.UserName;
+        }
+
+        if (string.IsNullOrWhiteSpace(summary))
+        {
+            RegistryNote = "Maintenance work summary is required.";
+            return false;
+        }
+
+        var laborText = MaintenanceLaborHoursTextBox.Text.Trim();
+        if (!string.IsNullOrWhiteSpace(laborText)
+            && (!double.TryParse(laborText, NumberStyles.Number, CultureInfo.CurrentCulture, out laborHours) || laborHours < 0))
+        {
+            RegistryNote = "Labor hours must be a non-negative number.";
+            return false;
+        }
+
+        var costText = MaintenanceCostTextBox.Text.Trim();
+        if (!string.IsNullOrWhiteSpace(costText)
+            && (!decimal.TryParse(costText, NumberStyles.Currency, CultureInfo.CurrentCulture, out cost) || cost < 0))
+        {
+            RegistryNote = "Maintenance cost must be a non-negative number.";
+            return false;
+        }
 
         return true;
     }

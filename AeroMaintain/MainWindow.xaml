@@ -187,6 +187,7 @@
                     </Grid.ColumnDefinitions>
 
                     <Border Grid.Column="0" Style="{StaticResource PanelStyle}" Margin="0,0,12,0">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Add / Update Equipment" />
                             <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,4,0,12"
@@ -233,16 +234,49 @@
                             <TextBlock Text="Notes (Optional)" />
                             <TextBox x:Name="NotesTextBox" Margin="0,4,0,12" Height="70" TextWrapping="Wrap" AcceptsReturn="True" />
 
+                            <Separator Margin="0,4,0,12" />
+                            <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource GraphiteBrush}" Text="Maintenance Completion" />
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,4,0,8"
+                                       Text="Details saved to maintenance history when the selected unit is logged." TextWrapping="Wrap" />
+
+                            <TextBlock Text="Performed By" />
+                            <TextBox x:Name="MaintenancePerformedByTextBox" Margin="0,4,0,8" />
+
+                            <TextBlock Text="Work Summary" />
+                            <TextBox x:Name="MaintenanceSummaryTextBox" Margin="0,4,0,8" Height="54" TextWrapping="Wrap" AcceptsReturn="True" />
+
+                            <TextBlock Text="Parts Replaced" />
+                            <TextBox x:Name="MaintenancePartsTextBox" Margin="0,4,0,8" />
+
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Labor Hours" />
+                                    <TextBox x:Name="MaintenanceLaborHoursTextBox" Margin="0,4,0,0" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Cost" />
+                                    <TextBox x:Name="MaintenanceCostTextBox" Margin="0,4,0,0" />
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="Maintenance Notes" />
+                            <TextBox x:Name="MaintenanceNotesTextBox" Margin="0,4,0,12" Height="54" TextWrapping="Wrap" AcceptsReturn="True" />
+
                             <WrapPanel Margin="0,4,0,0">
                                 <Button Content="Save Equipment" Click="SaveEquipmentButton_Click" />
                                 <Button Content="Clear Form" Click="ClearFormButton_Click" />
                             </WrapPanel>
                             <WrapPanel Margin="0,6,0,0">
                                 <Button Content="Delete Selected" Click="DeleteSelectedButton_Click" />
-                                <Button Content="Persist to JSON" Click="PersistButton_Click" />
+                                <Button Content="Save Database" Click="PersistButton_Click" />
                             </WrapPanel>
                             <WrapPanel Margin="0,6,0,0">
-                                <Button Content="Mark Maintained (Today)" Click="MarkMaintainedButton_Click" />
+                                <Button Content="Log Maintenance (Today)" Click="MarkMaintainedButton_Click" />
                             </WrapPanel>
                             <WrapPanel Margin="0,6,0,0">
                                 <Button Content="Import from CSV" Click="ImportCsvButton_Click" />
@@ -251,6 +285,7 @@
                             <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,12,0,0"
                                        Text="{Binding RegistryNote}" TextWrapping="Wrap" />
                         </StackPanel>
+                        </ScrollViewer>
                     </Border>
 
                     <Border Grid.Column="1" Style="{StaticResource PanelStyle}">
@@ -440,6 +475,68 @@
                                 </StackPanel>
                             </Border>
                         </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="History and Audit">
+                <Grid Margin="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.35*" />
+                        <ColumnDefinition Width="1*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource PanelStyle}" Margin="0,0,12,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Maintenance History" />
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,4,0,10"
+                                       Text="{Binding HistoryNote}" TextWrapping="Wrap" />
+
+                            <DataGrid ItemsSource="{Binding MaintenanceHistory}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      IsReadOnly="True"
+                                      Height="620"
+                                      GridLinesVisibility="Horizontal"
+                                      HeadersVisibility="Column"
+                                      BorderBrush="#CBC6BA">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Completed" Binding="{Binding CompletedOn, StringFormat=yyyy-MM-dd}" Width="95" />
+                                    <DataGridTextColumn Header="Equipment" Binding="{Binding EquipmentName}" Width="150" />
+                                    <DataGridTextColumn Header="Performed By" Binding="{Binding PerformedBy}" Width="120" />
+                                    <DataGridTextColumn Header="Work Summary" Binding="{Binding WorkSummary}" Width="*" />
+                                    <DataGridTextColumn Header="Parts" Binding="{Binding PartsReplaced}" Width="120" />
+                                    <DataGridTextColumn Header="Hours" Binding="{Binding LaborHours}" Width="70" />
+                                    <DataGridTextColumn Header="Cost" Binding="{Binding Cost}" Width="80" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="1" Style="{StaticResource PanelStyle}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Audit Trail" />
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,4,0,10"
+                                       Text="{Binding AuditNote}" TextWrapping="Wrap" />
+
+                            <DataGrid ItemsSource="{Binding AuditTrail}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      IsReadOnly="True"
+                                      Height="620"
+                                      GridLinesVisibility="Horizontal"
+                                      HeadersVisibility="Column"
+                                      BorderBrush="#CBC6BA">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Changed UTC" Binding="{Binding ChangedAtUtc, StringFormat=yyyy-MM-dd HH:mm}" Width="120" />
+                                    <DataGridTextColumn Header="User" Binding="{Binding UserName}" Width="95" />
+                                    <DataGridTextColumn Header="Entity" Binding="{Binding EntityName}" Width="105" />
+                                    <DataGridTextColumn Header="Action" Binding="{Binding Action}" Width="75" />
+                                    <DataGridTextColumn Header="Field" Binding="{Binding FieldName}" Width="115" />
+                                    <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
                     </Border>
                 </Grid>
             </TabItem>

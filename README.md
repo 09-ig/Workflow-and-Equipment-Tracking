@@ -1,46 +1,43 @@
 # AeroMaintain
 
-A Windows desktop application for tracking equipment health, scheduling maintenance, and guiding first-pass troubleshooting in industrial operations. Built as a portfolio project using C# 12, .NET 8, and WPF.
-
----
+A Windows desktop application for tracking equipment health, scheduling maintenance, logging completed work, and guiding first-pass troubleshooting in industrial operations. Built as a portfolio project using C# 12, .NET 8, WPF, SQLite, and EF Core.
 
 ## Features
 
 ### Operations Dashboard
-- Live fleet snapshot: Healthy / Watch / Critical unit counts at a glance
-- Computed average health score across the entire fleet
-- Priority queue highlighting overdue and critical items (top 8)
-- Visual distribution bar showing fleet status balance
+- Fleet snapshot: Healthy / Watch / Critical unit counts
+- Average health score across the fleet
+- Priority queue for overdue and critical items
+- Visual distribution bars for current fleet status
 
 ### Equipment Registry
-- Add, edit, and delete equipment entries with full field validation
-- Real-time search filter by name, serial number, or category
-- One-click **Mark Maintained (Today)** resets the maintenance clock instantly
-- Status badges with colour coding (green / amber / red)
-- Auto-computed health score and label per unit
-- Duplicate serial number guard on save
-- JSON persistence — registry survives application restarts
+- Add, edit, delete, search, and import equipment records
+- Duplicate serial number validation
+- Auto-computed next due date, health score, and health label
+- SQLite persistence with EF Core migrations
+- Demo JSON seed data loaded on first run
 
 ### Maintenance Scheduler
-- Builds a task list automatically from interval + last-service date
-- Filter by equipment status (Healthy / Watch / Critical) and due window (Overdue, 7 days, 30 days)
-- Overdue rows highlighted red for immediate visibility
+- Task list generated from last maintenance date and interval
+- Status and due-window filters
+- Overdue highlighting
 - Priority labels: Immediate / Monitor / Routine
-- Export the filtered task view to a timestamped CSV
+- CSV export for filtered task views
+
+### Maintenance History and Audit
+- Maintenance completion log with technician, work summary, parts, cost, labor hours, and notes
+- Per-equipment history focus when a registry row is selected
+- Audit trail for equipment create/update/delete events and maintenance-date changes
+- Legacy `EnsureCreated()` databases are baselined before new migrations are applied
 
 ### Guided Troubleshooting
-- Rule-based symptom lookup across 8 common failure modes:  
-  Overheating, Vibration, Delayed startup, Abnormal noise, Sensor warning, Pressure drop, Oil or fluid leak, Electrical fault
-- Each symptom surfaces possible causes and a step-by-step check procedure
-- Standardises first-pass inspection before escalation to specialist teams
+- Rule-based lookup for common symptoms
+- Possible causes and recommended checks for first-pass inspection
 
 ### Reports and Export
-- One-click fleet health report (plain text, suitable for shift handovers)
-- Equipment registry export to CSV with health scores included
-- Maintenance task export to CSV with priority and days-remaining columns
-- All exports saved under an `Exports/` folder beside the executable
-
----
+- Equipment CSV export
+- Maintenance task CSV export
+- Text report generation for handovers
 
 ## Tech Stack
 
@@ -48,140 +45,96 @@ A Windows desktop application for tracking equipment health, scheduling maintena
 |---|---|
 | UI framework | WPF (.NET 8, Windows) |
 | Language | C# 12 |
-| Data storage | JSON via System.Text.Json |
-| Architecture | MVVM-lite — INotifyPropertyChanged, ObservableCollection |
+| Data storage | SQLite via EF Core migrations |
+| Seed data | JSON files in `AeroMaintain/Data` |
 | Unit testing | xUnit 2.9 with coverlet |
 | Build tooling | .NET SDK 8 |
 
----
-
 ## Project Structure
 
-```
+```text
 C# project/
-├── AeroMaintain/
-│   ├── Models/
-│   │   ├── Equipment.cs               # Core entity; NextDueDate derived from interval
-│   │   ├── EquipmentStatus.cs         # Healthy / Watch / Critical enum
-│   │   ├── MaintenanceTask.cs         # Flat read model used by the Scheduler tab
-│   │   ├── HealthAssessment.cs        # Score + label + summary from HealthScoreService
-│   │   └── TroubleshootingRule.cs     # Symptom -> causes + recommended checks
-│   ├── Services/
-│   │   ├── HealthScoreService.cs      # Penalty-based scoring (0-100)
-│   │   ├── MaintenanceService.cs      # Task builder and filter engine
-│   │   ├── TroubleshootingService.cs  # Case-insensitive symptom lookup
-│   │   ├── DataService.cs             # Async JSON load/save; path injectable for tests
-│   │   └── ExportService.cs           # CSV and plain-text report generation
-│   ├── Data/
-│   │   ├── equipment.json             # 10 pre-loaded industrial equipment records
-│   │   └── troubleshooting_rules.json # 8 symptom rule entries
-│   ├── MainWindow.xaml                # All UI: 5 tabs, styles, data bindings
-│   └── MainWindow.xaml.cs             # Code-behind, ViewModel properties, handlers
-└── AeroMaintain.Tests/
-    ├── HealthScoreServiceTests.cs      # 9 tests
-    ├── MaintenanceServiceTests.cs      # 8 tests
-    ├── TroubleshootingServiceTests.cs  # 4 tests
-    ├── DataServiceTests.cs             # 5 tests
-    └── ExportServiceTests.cs           # 11 tests  →  38 total
+|-- AeroMaintain/
+|   |-- Data/
+|   |   |-- AeroMaintainDbContext.cs
+|   |   |-- equipment.json
+|   |   `-- troubleshooting_rules.json
+|   |-- Migrations/
+|   |   |-- 20260625120000_BaselineEquipmentSchema.cs
+|   |   |-- 20260625121000_AddProductionLogging.cs
+|   |   `-- AeroMaintainDbContextModelSnapshot.cs
+|   |-- Models/
+|   |   |-- AuditLog.cs
+|   |   |-- Equipment.cs
+|   |   |-- EquipmentStatus.cs
+|   |   |-- HealthAssessment.cs
+|   |   |-- MaintenanceLog.cs
+|   |   |-- MaintenanceTask.cs
+|   |   `-- TroubleshootingRule.cs
+|   |-- Services/
+|   |   |-- CsvImportService.cs
+|   |   |-- DataService.cs
+|   |   |-- ExportService.cs
+|   |   |-- HealthScoreService.cs
+|   |   |-- MaintenanceService.cs
+|   |   `-- TroubleshootingService.cs
+|   |-- MainWindow.xaml
+|   `-- MainWindow.xaml.cs
+`-- AeroMaintain.Tests/
+    |-- DataServiceTests.cs
+    |-- ExportServiceTests.cs
+    |-- HealthScoreServiceTests.cs
+    |-- MaintenanceServiceTests.cs
+    `-- TroubleshootingServiceTests.cs
 ```
-
----
 
 ## Application Flow
 
-```
-Data/*.json
+```text
+JSON seed files
     |
     v
-DataService  ──>  MainWindow (INotifyPropertyChanged + ObservableCollection)
-                       |
-                       +──> HealthScoreService      (per-unit score calculation)
-                       +──> MaintenanceService      (task building + filtering)
-                       +──> TroubleshootingService  (symptom rule lookup)
-                       +──> ExportService           (CSV + text report to Exports/)
+SQLite + EF Core migrations -> DataService -> MainWindow
+                                      |
+                                      |-- HealthScoreService
+                                      |-- MaintenanceService
+                                      |-- TroubleshootingService
+                                      `-- ExportService
 ```
-
-`MainWindow.xaml` declares all bindings and tab layouts. `MainWindow.xaml.cs` coordinates user actions and drives view refreshes. Business logic lives entirely in `Services/` and is independently testable without a UI.
-
----
-
-## Health Score Algorithm
-
-Each unit starts at 100. Penalties are subtracted and the result is clamped to [0, 100]:
-
-```
-score = 100
-      - min(45, overdueDays × 2)    // overdue days penalty, capped at 45
-      - statusPenalty               // Healthy = 0, Watch = 15, Critical = 35
-      - min(25, issueCount × 5)     // recent-issue penalty, capped at 25
-```
-
-| Score | Label |
-|---|---|
-| 80 – 100 | Stable |
-| 55 – 79 | Needs Attention |
-| 0 – 54 | Immediate Check Required |
-
----
-
-## Prerequisites
-
-- Windows 10 or Windows 11
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-
-Verify your installation:
-
-```powershell
-dotnet --info
-```
-
----
 
 ## Build and Run
 
 ```powershell
-# From the repository root
 dotnet restore
 dotnet run --project AeroMaintain
 
-# Release build
 dotnet build AeroMaintain -c Release
-# Output: AeroMaintain\bin\Release\net8.0-windows\AeroMaintain.exe
 ```
 
-The app opens with 10 pre-loaded equipment records spread across Healthy, Watch, and Critical states so every dashboard feature is immediately visible.
-
----
+The app stores its local database under the user's LocalAppData `AeroMaintain` folder. On first run, demo equipment and troubleshooting data are seeded from JSON.
 
 ## Running Tests
 
 ```powershell
-# Run all 38 unit tests
 dotnet test AeroMaintain.Tests
-
-# With detailed output
-dotnet test AeroMaintain.Tests --logger "console;verbosity=normal"
 ```
 
-| Test class | Count | Coverage focus |
-|---|---|---|
-| HealthScoreServiceTests | 9 | Scoring, penalty caps, label thresholds, fleet averages |
-| MaintenanceServiceTests | 8 | Due date calculation, priority labels, all filter combinations |
-| TroubleshootingServiceTests | 4 | Case-insensitive matching, null on miss, multi-rule selection |
-| DataServiceTests | 5 | Save/load round-trip, field fidelity, overwrite, missing-file guard |
-| ExportServiceTests | 11 | File creation, CSV headers, data rows, comma escaping, report content |
+Current suite: 41 tests.
 
----
+| Test class | Count | Coverage focus |
+|---|---:|---|
+| HealthScoreServiceTests | 9 | Scoring, penalty caps, labels, fleet averages |
+| MaintenanceServiceTests | 8 | Due dates, priority labels, filters |
+| TroubleshootingServiceTests | 4 | Symptom lookup behavior |
+| DataServiceTests | 8 | SQLite persistence, migrations, legacy upgrade path, audit entries, maintenance history |
+| ExportServiceTests | 11 | CSV and text report generation |
 
 ## Manual Smoke Test
 
-1. Open the dashboard — confirm all six summary cards populate with values.
-2. Use the **Equipment Registry** search to filter by name and by category.
-3. Select a record, click **Mark Maintained (Today)** — verify the next-due date advances.
-4. Add a new equipment item, save, restart the app, confirm it reloads.
-5. Switch to the **Maintenance Scheduler**, cycle through every status and due-date filter.
-6. Open the **Guided Troubleshooting** tab and cycle through all 8 symptoms.
-7. Go to **Reports and Export**, generate the text report, and export both CSV files.
-8. Open the `Exports/` folder beside the executable and inspect the generated files.
-
-
+1. Open the dashboard and confirm summary counts populate.
+2. Search the Equipment Registry by name, serial number, and category.
+3. Select a record, fill maintenance completion details, click **Log Maintenance (Today)**, then verify the next due date and History and Audit tab update.
+4. Add a new equipment item, save, restart the app, and confirm it reloads.
+5. Switch to Maintenance Scheduler and cycle through status and due-date filters.
+6. Open Guided Troubleshooting and cycle through symptoms.
+7. Generate a report and export both CSV files.
