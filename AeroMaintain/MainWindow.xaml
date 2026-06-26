@@ -90,6 +90,53 @@
                         <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,4,0,14"
                                    Text="A quick daily view for what is healthy, what needs watching, and what needs action now." />
 
+                        <Border Style="{StaticResource PanelStyle}" Margin="0,0,0,14">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource GraphiteBrush}" Text="Operational Notifications" />
+                                        <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,4,0,0"
+                                                   Text="{Binding AlertSummary}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="Show Desktop Notification" Click="ShowDesktopNotificationButton_Click" VerticalAlignment="Top" />
+                                </Grid>
+
+                                <DataGrid Grid.Row="1"
+                                          ItemsSource="{Binding ActiveAlerts}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          IsReadOnly="True"
+                                          Height="170"
+                                          Margin="0,10,0,0"
+                                          GridLinesVisibility="Horizontal"
+                                          HeadersVisibility="Column"
+                                          BorderBrush="#CBC6BA">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="90" />
+                                        <DataGridTextColumn Header="Equipment" Binding="{Binding EquipmentName}" Width="170" />
+                                        <DataGridTextColumn Header="Serial" Binding="{Binding SerialNumber}" Width="115" />
+                                        <DataGridTextColumn Header="Due Date" Binding="{Binding DueDate, StringFormat=yyyy-MM-dd}" Width="115" />
+                                        <DataGridTextColumn Header="Days" Binding="{Binding DaysRemaining}" Width="70" />
+                                        <DataGridTextColumn Header="Status" Binding="{Binding EquipmentStatus}" Width="90" />
+                                        <DataGridTextColumn Header="Message" Binding="{Binding Message}" Width="*" />
+                                        <DataGridTextColumn Header="Action" Binding="{Binding ActionLabel}" Width="170" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <TextBlock Grid.Row="2" Style="{StaticResource SecondaryTextStyle}" Margin="0,8,0,0"
+                                           Text="{Binding AlertNote}" TextWrapping="Wrap" />
+                            </Grid>
+                        </Border>
+
                         <UniformGrid Columns="3" Rows="2" Margin="0,0,0,14">
                             <Border Style="{StaticResource PanelStyle}" Margin="0,0,10,10">
                                 <StackPanel>

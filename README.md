@@ -9,6 +9,8 @@ A Windows desktop application for tracking equipment health, scheduling maintena
 - Average health score across the fleet
 - Priority queue for overdue and critical items
 - Visual distribution bars for current fleet status
+- Operational notifications for critical, overdue, due-soon, and watchlist equipment
+- Windows tray-style desktop alert for the current notification set
 
 ### Equipment Registry
 - Add, edit, delete, search, and import equipment records
@@ -44,6 +46,7 @@ A Windows desktop application for tracking equipment health, scheduling maintena
 | Layer | Technology |
 |---|---|
 | UI framework | WPF (.NET 8, Windows) |
+| Desktop alerts | Windows Forms `NotifyIcon` balloon notifications |
 | Language | C# 12 |
 | Data storage | SQLite via EF Core migrations |
 | Seed data | JSON files in `AeroMaintain/Data` |
@@ -69,6 +72,8 @@ C# project/
 |   |   |-- EquipmentStatus.cs
 |   |   |-- HealthAssessment.cs
 |   |   |-- MaintenanceLog.cs
+|   |   |-- MaintenanceAlert.cs
+|   |   |-- MaintenanceAlertSeverity.cs
 |   |   |-- MaintenanceTask.cs
 |   |   `-- TroubleshootingRule.cs
 |   |-- Services/
@@ -77,6 +82,8 @@ C# project/
 |   |   |-- ExportService.cs
 |   |   |-- HealthScoreService.cs
 |   |   |-- MaintenanceService.cs
+|   |   |-- NotificationService.cs
+|   |   |-- DesktopNotificationService.cs
 |   |   `-- TroubleshootingService.cs
 |   |-- MainWindow.xaml
 |   `-- MainWindow.xaml.cs
@@ -85,6 +92,7 @@ C# project/
     |-- ExportServiceTests.cs
     |-- HealthScoreServiceTests.cs
     |-- MaintenanceServiceTests.cs
+    |-- NotificationServiceTests.cs
     `-- TroubleshootingServiceTests.cs
 ```
 
@@ -98,6 +106,7 @@ SQLite + EF Core migrations -> DataService -> MainWindow
                                       |
                                       |-- HealthScoreService
                                       |-- MaintenanceService
+                                      |-- NotificationService
                                       |-- TroubleshootingService
                                       `-- ExportService
 ```
@@ -119,12 +128,13 @@ The app stores its local database under the user's LocalAppData `AeroMaintain` f
 dotnet test AeroMaintain.Tests
 ```
 
-Current suite: 41 tests.
+Current suite: 46 tests.
 
 | Test class | Count | Coverage focus |
 |---|---:|---|
 | HealthScoreServiceTests | 9 | Scoring, penalty caps, labels, fleet averages |
 | MaintenanceServiceTests | 8 | Due dates, priority labels, filters |
+| NotificationServiceTests | 5 | Alert severity, ordering, summary text |
 | TroubleshootingServiceTests | 4 | Symptom lookup behavior |
 | DataServiceTests | 8 | SQLite persistence, migrations, legacy upgrade path, audit entries, maintenance history |
 | ExportServiceTests | 11 | CSV and text report generation |
@@ -132,9 +142,10 @@ Current suite: 41 tests.
 ## Manual Smoke Test
 
 1. Open the dashboard and confirm summary counts populate.
-2. Search the Equipment Registry by name, serial number, and category.
-3. Select a record, fill maintenance completion details, click **Log Maintenance (Today)**, then verify the next due date and History and Audit tab update.
-4. Add a new equipment item, save, restart the app, and confirm it reloads.
-5. Switch to Maintenance Scheduler and cycle through status and due-date filters.
-6. Open Guided Troubleshooting and cycle through symptoms.
-7. Generate a report and export both CSV files.
+2. Review Operational Notifications and click **Show Desktop Notification**.
+3. Search the Equipment Registry by name, serial number, and category.
+4. Select a record, fill maintenance completion details, click **Log Maintenance (Today)**, then verify the next due date and History and Audit tab update.
+5. Add a new equipment item, save, restart the app, and confirm it reloads.
+6. Switch to Maintenance Scheduler and cycle through status and due-date filters.
+7. Open Guided Troubleshooting and cycle through symptoms.
+8. Generate a report and export both CSV files.

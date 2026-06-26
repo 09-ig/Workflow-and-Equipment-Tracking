@@ -19,6 +19,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly TroubleshootingService _troubleshootingService = new();
     private readonly ExportService _exportService = new();
     private readonly CsvImportService _csvImportService = new();
+    private readonly NotificationService _notificationService = new();
+    private readonly DesktopNotificationService _desktopNotificationService = new();
 
     private readonly List<Equipment> _equipmentStore = new();
     private readonly List<TroubleshootingRule> _rules = new();
@@ -43,9 +45,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _reportPreview = "No report generated yet.";
     private string _historyNote = "Select equipment to focus its maintenance history.";
     private string _auditNote = "Audit events will appear after equipment changes.";
+    private string _alertSummary = "No active operational notifications.";
+    private string _alertNote = "Critical and overdue equipment will appear here.";
     private string _selectedStatusFilter = "All";
     private string _selectedDueFilter = "All";
     private string _searchText = string.Empty;
+    private bool _startupNotificationShown;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -57,6 +62,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public ObservableCollection<string> RecommendedChecks { get; } = new();
     public ObservableCollection<MaintenanceLog> MaintenanceHistory { get; } = new();
     public ObservableCollection<AuditLog> AuditTrail { get; } = new();
+    public ObservableCollection<MaintenanceAlert> ActiveAlerts { get; } = new();
 
     public List<string> StatusFilterOptions { get; } = new() { "All", "Healthy", "Watch", "Critical" };
     public List<string> DueFilterOptions { get; } = new() { "All", "Overdue", "Due within 7 days", "Due within 30 days" };
@@ -161,6 +167,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         set => SetProperty(ref _auditNote, value);
     }
 
+    public string AlertSummary
+    {
+        get => _alertSummary;
+        set => SetProperty(ref _alertSummary, value);
+    }
+
+    public string AlertNote
+    {
+        get => _alertNote;
+        set => SetProperty(ref _alertNote, value);
+    }
+
     public string SelectedStatusFilter
     {
         get => _selectedStatusFilter;
@@ -207,7 +225,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 $"Could not load saved data.\n\n{ex.Message}\n\nThe app will start with an empty registry.",
                 "Load Error",
                 MessageBoxButton.OK,
@@ -220,6 +238,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             SymptomComboBox.SelectedIndex = 0;
         }
+
+        ShowStartupDesktopNotificationIfNeeded();
     }
 
     private async Task LoadDataAsync()
@@ -294,6 +314,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         ApplySchedulerFilters();
         RefreshAtRiskTasks();
+        RefreshOperationalAlerts();
     }
 
     private void RefreshAtRiskTasks()
@@ -313,6 +334,37 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         AtRiskNote = AtRiskTasks.Count == 0
             ? "No urgent items. Current fleet condition is stable."
             : $"{AtRiskTasks.Count} priority items listed. Review due dates and assign checks.";
+    }
+
+    private void RefreshOperationalAlerts()
+    {
+        ActiveAlerts.Clear();
+
+        var alerts = _notificationService.BuildAlerts(_allTasks);
+        foreach (var alert in alerts.Take(12))
+        {
+            ActiveAlerts.Add(alert);
+        }
+
+        AlertSummary = _notificationService.BuildSummary(alerts);
+        AlertNote = ActiveAlerts.Count == 0
+            ? "No active notifications. Fleet condition is clear for this horizon."
+            : $"{ActiveAlerts.Count} active notifications shown. Critical items are ordered first.";
+    }
+
+    private void ShowStartupDesktopNotificationIfNeeded()
+    {
+        if (_startupNotificationShown || ActiveAlerts.Count == 0)
+        {
+            return;
+        }
+
+        _startupNotificationShown = true;
+
+        if (ActiveAlerts.Any(alert => alert.IsCritical))
+        {
+            _desktopNotificationService.ShowOperationalAlertSummary(ActiveAlerts, AlertSummary);
+        }
     }
 
     private async Task RefreshProductionRecordsAsync()
@@ -512,7 +564,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 $"Failed to log maintenance.\n\n{ex.Message}",
                 "Maintenance Log Error",
                 MessageBoxButton.OK,
@@ -624,6 +676,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
+    private void ShowDesktopNotificationButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ActiveAlerts.Count == 0)
+        {
+            AlertNote = "No active notifications to show.";
+            return;
+        }
+
+        _desktopNotificationService.ShowOperationalAlertSummary(ActiveAlerts, AlertSummary);
+        AlertNote = "Desktop notification sent for the current alert set.";
+    }
+
     private void ExportEquipmentCsvButton_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -713,7 +777,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 $"Failed to save equipment data.\n\n{ex.Message}",
                 "Save Error",
                 MessageBoxButton.OK,
@@ -721,7 +785,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private static void SetComboBoxSelection(ComboBox comboBox, string target)
+    private static void SetComboBoxSelection(System.Windows.Controls.ComboBox comboBox, string target)
     {
         for (var i = 0; i < comboBox.Items.Count; i++)
         {
@@ -867,5 +931,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         storage = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _desktopNotificationService.Dispose();
+        base.OnClosed(e);
     }
 }
