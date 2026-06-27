@@ -15,6 +15,7 @@ public class PermissionServiceTests
         Assert.False(_service.HasPermission(UserRole.Technician, UserPermission.EditEquipment));
         Assert.False(_service.HasPermission(UserRole.Technician, UserPermission.DeleteEquipment));
         Assert.False(_service.HasPermission(UserRole.Technician, UserPermission.ViewAuditTrail));
+        Assert.False(_service.HasPermission(UserRole.Technician, UserPermission.ManageTroubleshooting));
     }
 
     [Fact]
@@ -24,6 +25,7 @@ public class PermissionServiceTests
         Assert.True(_service.HasPermission(UserRole.Supervisor, UserPermission.ImportEquipment));
         Assert.True(_service.HasPermission(UserRole.Supervisor, UserPermission.ExportData));
         Assert.True(_service.HasPermission(UserRole.Supervisor, UserPermission.ViewAuditTrail));
+        Assert.True(_service.HasPermission(UserRole.Supervisor, UserPermission.ManageTroubleshooting));
         Assert.False(_service.HasPermission(UserRole.Supervisor, UserPermission.DeleteEquipment));
         Assert.False(_service.HasPermission(UserRole.Supervisor, UserPermission.ConfigureSystem));
     }

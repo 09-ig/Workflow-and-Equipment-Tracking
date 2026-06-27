@@ -211,6 +211,40 @@ public class DataServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task SaveTroubleshootingRules_WritesAuditEntries_ForCreateUpdateAndDelete()
+    {
+        var rule = new TroubleshootingRule
+        {
+            Id = Guid.NewGuid(),
+            Symptom = "Hydraulic drift",
+            PossibleCauses = ["Internal leakage"],
+            RecommendedChecks = ["Inspect actuator seal"]
+        };
+
+        await _service.SaveTroubleshootingRulesAsync([rule], "supervisor", UserRole.Supervisor);
+
+        rule.RecommendedChecks = ["Inspect actuator seal", "Check valve response"];
+        await _service.SaveTroubleshootingRulesAsync([rule], "supervisor", UserRole.Supervisor);
+
+        await _service.SaveTroubleshootingRulesAsync([], "supervisor", UserRole.Supervisor);
+
+        var auditLogs = await _service.LoadAuditLogsAsync();
+        Assert.Contains(auditLogs, audit =>
+            audit.EntityName == nameof(TroubleshootingRule) &&
+            audit.EntityId == rule.Id &&
+            audit.Action == "Created" &&
+            audit.UserRole == nameof(UserRole.Supervisor));
+        Assert.Contains(auditLogs, audit =>
+            audit.EntityName == nameof(TroubleshootingRule) &&
+            audit.FieldName == nameof(TroubleshootingRule.RecommendedChecks) &&
+            audit.NewValue == "Inspect actuator seal; Check valve response");
+        Assert.Contains(auditLogs, audit =>
+            audit.EntityName == nameof(TroubleshootingRule) &&
+            audit.EntityId == rule.Id &&
+            audit.Action == "Deleted");
+    }
+
+    [Fact]
     public async Task Constructor_BaselinesLegacyDatabaseAndAppliesProductionLoggingMigration()
     {
         var legacyDbPath = Path.Combine(_tempDir, "legacy.db");

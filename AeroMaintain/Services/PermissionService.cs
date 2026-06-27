@@ -15,7 +15,8 @@ public class PermissionService
                 UserPermission.EditEquipment or
                 UserPermission.ImportEquipment or
                 UserPermission.ExportData or
-                UserPermission.ViewAuditTrail,
+                UserPermission.ViewAuditTrail or
+                UserPermission.ManageTroubleshooting,
             UserRole.Technician => permission is
                 UserPermission.ViewEquipment or
                 UserPermission.LogMaintenance,

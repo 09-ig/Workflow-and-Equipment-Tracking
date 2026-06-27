@@ -477,11 +477,12 @@
             <TabItem Header="Guided Troubleshooting">
                 <Grid Margin="12">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="360" />
+                        <ColumnDefinition Width="430" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
                     <Border Grid.Column="0" Style="{StaticResource PanelStyle}" Margin="0,0,12,0">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Symptom Lookup" />
                             <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,4,0,12"
@@ -492,9 +493,48 @@
                                       ItemsSource="{Binding SymptomOptions}"
                                       SelectionChanged="SymptomComboBox_SelectionChanged" />
 
-                            <TextBlock FontSize="13" Foreground="{StaticResource MutedTextBrush}"
-                                       Text="Common symptom set: overheating, vibration, delayed startup, abnormal noise, sensor warning." TextWrapping="Wrap" />
+                            <Separator Margin="0,6,0,12" />
+                            <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource GraphiteBrush}" Text="Rule Library" />
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,4,0,8"
+                                       Text="{Binding TroubleshootingEditorNote}" TextWrapping="Wrap" />
+
+                            <DataGrid x:Name="TroubleshootingRuleDataGrid"
+                                      ItemsSource="{Binding TroubleshootingRuleItems}"
+                                      SelectionChanged="TroubleshootingRuleDataGrid_SelectionChanged"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      IsReadOnly="True"
+                                      Height="190"
+                                      GridLinesVisibility="Horizontal"
+                                      HeadersVisibility="Column"
+                                      BorderBrush="#CBC6BA">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Symptom" Binding="{Binding Symptom}" Width="*" />
+                                    <DataGridTextColumn Header="Causes" Binding="{Binding PossibleCauses.Count}" Width="75" />
+                                    <DataGridTextColumn Header="Checks" Binding="{Binding RecommendedChecks.Count}" Width="75" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <TextBlock Text="Symptom" Margin="0,10,0,0" />
+                            <TextBox x:Name="RuleSymptomTextBox" Margin="0,4,0,8" IsEnabled="{Binding CanManageTroubleshooting}" />
+
+                            <TextBlock Text="Possible Causes (one per line)" />
+                            <TextBox x:Name="PossibleCausesEditorTextBox" Margin="0,4,0,8" Height="92"
+                                     TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                                     IsEnabled="{Binding CanManageTroubleshooting}" />
+
+                            <TextBlock Text="Recommended Checks (one per line)" />
+                            <TextBox x:Name="RecommendedChecksEditorTextBox" Margin="0,4,0,10" Height="110"
+                                     TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                                     IsEnabled="{Binding CanManageTroubleshooting}" />
+
+                            <WrapPanel>
+                                <Button Content="New Rule" Click="NewTroubleshootingRuleButton_Click" IsEnabled="{Binding CanManageTroubleshooting}" />
+                                <Button Content="Save Rule" Click="SaveTroubleshootingRuleButton_Click" IsEnabled="{Binding CanManageTroubleshooting}" />
+                                <Button Content="Delete Rule" Click="DeleteTroubleshootingRuleButton_Click" IsEnabled="{Binding CanManageTroubleshooting}" />
+                            </WrapPanel>
                         </StackPanel>
+                        </ScrollViewer>
                     </Border>
 
                     <Border Grid.Column="1" Style="{StaticResource PanelStyle}">

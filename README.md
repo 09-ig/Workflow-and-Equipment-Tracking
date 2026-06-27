@@ -44,6 +44,8 @@ A Windows desktop application for tracking equipment health, scheduling maintena
 ### Guided Troubleshooting
 - Rule-based lookup for common symptoms
 - Possible causes and recommended checks for first-pass inspection
+- Supervisor/Admin editor for troubleshooting symptoms, causes, and checks
+- Troubleshooting rule create/update/delete events are audit logged
 
 ### Reports and Export
 - Equipment CSV export
@@ -174,7 +176,7 @@ The header shows the active database provider and where settings were loaded fro
 dotnet test AeroMaintain.Tests
 ```
 
-Current suite: 53 tests.
+Current suite: 55 tests.
 
 | Test class | Count | Coverage focus |
 |---|---:|---|
@@ -183,8 +185,8 @@ Current suite: 53 tests.
 | MaintenanceServiceTests | 8 | Due dates, priority labels, filters |
 | NotificationServiceTests | 5 | Alert severity, ordering, summary text |
 | PermissionServiceTests | 4 | Role-permission matrix and role descriptions |
-| TroubleshootingServiceTests | 4 | Symptom lookup behavior |
-| DataServiceTests | 8 | SQLite persistence, migrations, legacy upgrade path, audit entries, maintenance history |
+| TroubleshootingServiceTests | 5 | Symptom lookup behavior and multiline editor parsing |
+| DataServiceTests | 9 | SQLite persistence, migrations, legacy upgrade path, audit entries, maintenance history, troubleshooting rule sync |
 | ExportServiceTests | 11 | CSV and text report generation |
 
 ## Manual Smoke Test
@@ -198,5 +200,6 @@ Current suite: 53 tests.
 7. As Supervisor, add or edit equipment and verify the audit role column.
 8. As Admin, confirm delete access is available.
 9. Switch to Maintenance Scheduler and cycle through status and due-date filters.
-10. Open Guided Troubleshooting and cycle through symptoms.
-11. Generate a report and export both CSV files.
+10. Open Guided Troubleshooting, edit a rule as Supervisor/Admin, and verify the audit entry.
+11. Switch to Technician and confirm troubleshooting rule editing is disabled.
+12. Generate a report and export both CSV files.

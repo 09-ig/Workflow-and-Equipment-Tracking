@@ -76,4 +76,20 @@ public class TroubleshootingServiceTests
 
         Assert.Null(result);
     }
+
+    [Fact]
+    public void ParseMultilineList_TrimsBulletsAndRemovesBlankAndDuplicateRows()
+    {
+        var result = new TroubleshootingService().ParseMultilineList(
+            """
+            - Bearing wear
+
+            * Bearing wear
+            Loose mount
+            """);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal("Bearing wear", result[0]);
+        Assert.Equal("Loose mount", result[1]);
+    }
 }

@@ -125,6 +125,73 @@ public class DataService
         return rules;
     }
 
+    public async Task SaveTroubleshootingRulesAsync(
+        IEnumerable<TroubleshootingRule> rules,
+        string? actor = null,
+        UserRole actorRole = UserRole.Admin)
+    {
+        var incoming = rules.ToList();
+        await using var ctx = CreateContext();
+        await using var transaction = await ctx.Database.BeginTransactionAsync();
+
+        var existing = await ctx.TroubleshootingRules.ToListAsync();
+        var auditLogs = new List<AuditLog>();
+        var userName = NormalizeActor(actor);
+        var roleName = actorRole.ToString();
+        var changedAtUtc = DateTime.UtcNow;
+
+        var toDelete = existing.Where(rule => incoming.All(next => next.Id != rule.Id)).ToList();
+        foreach (var removed in toDelete)
+        {
+            auditLogs.Add(CreateAudit(
+                nameof(TroubleshootingRule),
+                removed.Id,
+                "Deleted",
+                "*",
+                DescribeTroubleshootingRule(removed),
+                null,
+                $"Troubleshooting rule deleted: {removed.Symptom}",
+                userName,
+                roleName,
+                changedAtUtc));
+        }
+
+        ctx.TroubleshootingRules.RemoveRange(toDelete);
+
+        foreach (var rule in incoming)
+        {
+            var tracked = existing.FirstOrDefault(existingRule => existingRule.Id == rule.Id);
+            if (tracked is null)
+            {
+                ctx.TroubleshootingRules.Add(rule);
+                auditLogs.Add(CreateAudit(
+                    nameof(TroubleshootingRule),
+                    rule.Id,
+                    "Created",
+                    "*",
+                    null,
+                    DescribeTroubleshootingRule(rule),
+                    $"Troubleshooting rule created: {rule.Symptom}",
+                    userName,
+                    roleName,
+                    changedAtUtc));
+            }
+            else
+            {
+                AddTroubleshootingRuleChangeAudits(auditLogs, tracked, rule, userName, roleName, changedAtUtc);
+                ctx.Entry(tracked).CurrentValues.SetValues(rule);
+            }
+        }
+
+        if (auditLogs.Count > 0)
+        {
+            ctx.AuditLogs.AddRange(auditLogs);
+        }
+
+        await ctx.SaveChangesAsync();
+        await transaction.CommitAsync();
+    }
+
     public async Task<List<MaintenanceLog>> LoadMaintenanceLogsAsync(Guid? equipmentId = null, int take = 200)
     {
         await using var ctx = CreateContext();
@@ -357,6 +424,51 @@ public class DataService
         AddFieldChangeAudit(auditLogs, current, nameof(Equipment.Notes), current.Notes, incoming.Notes, userName, roleName, changedAtUtc);
     }
 
+    private static void AddTroubleshootingRuleChangeAudits(
+        ICollection<AuditLog> auditLogs,
+        TroubleshootingRule current,
+        TroubleshootingRule incoming,
+        string userName,
+        string roleName,
+        DateTime changedAtUtc)
+    {
+        AddFieldChangeAudit(
+            auditLogs,
+            nameof(TroubleshootingRule),
+            current.Id,
+            current.Symptom,
+            nameof(TroubleshootingRule.Symptom),
+            current.Symptom,
+            incoming.Symptom,
+            userName,
+            roleName,
+            changedAtUtc);
+
+        AddFieldChangeAudit(
+            auditLogs,
+            nameof(TroubleshootingRule),
+            current.Id,
+            current.Symptom,
+            nameof(TroubleshootingRule.PossibleCauses),
+            FormatList(current.PossibleCauses),
+            FormatList(incoming.PossibleCauses),
+            userName,
+            roleName,
+            changedAtUtc);
+
+        AddFieldChangeAudit(
+            auditLogs,
+            nameof(TroubleshootingRule),
+            current.Id,
+            current.Symptom,
+            nameof(TroubleshootingRule.RecommendedChecks),
+            FormatList(current.RecommendedChecks),
+            FormatList(incoming.RecommendedChecks),
+            userName,
+            roleName,
+            changedAtUtc);
+    }
+
     private static void AddFieldChangeAudit<T>(
         ICollection<AuditLog> auditLogs,
         Equipment equipment,
@@ -380,6 +492,36 @@ public class DataService
             FormatValue(oldValue),
             FormatValue(newValue),
             $"Updated {equipment.Name}: {fieldName} changed.",
+            userName,
+            roleName,
+            changedAtUtc));
+    }
+
+    private static void AddFieldChangeAudit<T>(
+        ICollection<AuditLog> auditLogs,
+        string entityName,
+        Guid entityId,
+        string displayName,
+        string fieldName,
+        T oldValue,
+        T newValue,
+        string userName,
+        string roleName,
+        DateTime changedAtUtc)
+    {
+        if (EqualityComparer<T>.Default.Equals(oldValue, newValue))
+        {
+            return;
+        }
+
+        auditLogs.Add(CreateAudit(
+            entityName,
+            entityId,
+            "Updated",
+            fieldName,
+            FormatValue(oldValue),
+            FormatValue(newValue),
+            $"Updated {displayName}: {fieldName} changed.",
             userName,
             roleName,
             changedAtUtc));
@@ -427,6 +569,16 @@ public class DataService
     private static string DescribeEquipment(Equipment equipment)
     {
         return $"{equipment.Name} ({equipment.SerialNumber}) - {equipment.Category} - {equipment.Status}";
+    }
+
+    private static string DescribeTroubleshootingRule(TroubleshootingRule rule)
+    {
+        return $"{rule.Symptom} | Causes: {FormatList(rule.PossibleCauses)} | Checks: {FormatList(rule.RecommendedChecks)}";
+    }
+
+    private static string FormatList(IEnumerable<string> values)
+    {
+        return string.Join("; ", values.Select(value => value.Trim()).Where(value => !string.IsNullOrWhiteSpace(value)));
     }
 
     private static string? FormatValue<T>(T value)

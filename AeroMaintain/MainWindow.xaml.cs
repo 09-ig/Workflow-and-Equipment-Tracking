@@ -49,6 +49,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _auditNote = "Audit events will appear after equipment changes.";
     private string _alertSummary = "No active operational notifications.";
     private string _alertNote = "Critical and overdue equipment will appear here.";
+    private string _troubleshootingEditorNote = "Select a symptom to edit its local guidance.";
     private string _currentUserLabel = string.Empty;
     private string _roleStatusNote = string.Empty;
     private string _databaseModeLabel = string.Empty;
@@ -57,12 +58,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _selectedDueFilter = "All";
     private string _searchText = string.Empty;
     private UserRole _selectedRole = UserRole.Admin;
+    private Guid? _editingRuleId;
     private bool _canEditEquipment;
     private bool _canDeleteEquipment;
     private bool _canLogMaintenance;
     private bool _canImportEquipment;
     private bool _canExportData;
     private bool _canViewAudit;
+    private bool _canManageTroubleshooting;
     private bool _startupNotificationShown;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -76,6 +79,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public ObservableCollection<MaintenanceLog> MaintenanceHistory { get; } = new();
     public ObservableCollection<AuditLog> AuditTrail { get; } = new();
     public ObservableCollection<MaintenanceAlert> ActiveAlerts { get; } = new();
+    public ObservableCollection<TroubleshootingRule> TroubleshootingRuleItems { get; } = new();
 
     public List<UserRole> RoleOptions { get; } = Enum.GetValues<UserRole>().ToList();
     public List<string> StatusFilterOptions { get; } = new() { "All", "Healthy", "Watch", "Critical" };
@@ -193,6 +197,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         set => SetProperty(ref _alertNote, value);
     }
 
+    public string TroubleshootingEditorNote
+    {
+        get => _troubleshootingEditorNote;
+        set => SetProperty(ref _troubleshootingEditorNote, value);
+    }
+
     public string CurrentUserLabel
     {
         get => _currentUserLabel;
@@ -265,6 +275,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         get => _canViewAudit;
         set => SetProperty(ref _canViewAudit, value);
+    }
+
+    public bool CanManageTroubleshooting
+    {
+        get => _canManageTroubleshooting;
+        set => SetProperty(ref _canManageTroubleshooting, value);
     }
 
     public string SelectedStatusFilter
@@ -453,6 +469,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         CanImportEquipment = _permissionService.HasPermission(SelectedRole, UserPermission.ImportEquipment);
         CanExportData = _permissionService.HasPermission(SelectedRole, UserPermission.ExportData);
         CanViewAudit = _permissionService.HasPermission(SelectedRole, UserPermission.ViewAuditTrail);
+        CanManageTroubleshooting = _permissionService.HasPermission(SelectedRole, UserPermission.ManageTroubleshooting);
         RefreshHistoryViews();
     }
 
@@ -556,9 +573,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void LoadSymptomOptions()
     {
         SymptomOptions.Clear();
+        TroubleshootingRuleItems.Clear();
         foreach (var rule in _rules.OrderBy(r => r.Symptom))
         {
             SymptomOptions.Add(rule.Symptom);
+            TroubleshootingRuleItems.Add(rule);
         }
     }
 
@@ -803,6 +822,175 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             RecommendedChecks.Add("• " + check);
         }
+    }
+
+    private void TroubleshootingRuleDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (TroubleshootingRuleDataGrid.SelectedItem is not TroubleshootingRule selected)
+        {
+            return;
+        }
+
+        PopulateTroubleshootingEditor(selected);
+        SymptomComboBox.SelectedItem = selected.Symptom;
+    }
+
+    private void NewTroubleshootingRuleButton_Click(object sender, RoutedEventArgs e)
+    {
+        PopulateTroubleshootingEditor(null);
+        SymptomComboBox.SelectedItem = null;
+        SelectedSymptomTitle = "Guided Checks";
+        PossibleCauses.Clear();
+        RecommendedChecks.Clear();
+        TroubleshootingEditorNote = "New rule draft ready. Add symptom, causes, and checks.";
+    }
+
+    private async void SaveTroubleshootingRuleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryRequirePermission(UserPermission.ManageTroubleshooting, "manage troubleshooting rules"))
+        {
+            TroubleshootingEditorNote = $"{SelectedRole} role cannot manage troubleshooting rules.";
+            return;
+        }
+
+        if (!TryBuildTroubleshootingRuleFromEditor(out var builtRule))
+        {
+            return;
+        }
+
+        var duplicate = _rules.Any(rule =>
+            rule.Symptom.Equals(builtRule.Symptom, StringComparison.OrdinalIgnoreCase) &&
+            (!_editingRuleId.HasValue || rule.Id != _editingRuleId.Value));
+
+        if (duplicate)
+        {
+            TroubleshootingEditorNote = "A troubleshooting rule with this symptom already exists.";
+            return;
+        }
+
+        if (_editingRuleId.HasValue)
+        {
+            var existing = _rules.FirstOrDefault(rule => rule.Id == _editingRuleId.Value);
+            if (existing is null)
+            {
+                TroubleshootingEditorNote = "Selected troubleshooting rule no longer exists.";
+                return;
+            }
+
+            existing.Symptom = builtRule.Symptom;
+            existing.PossibleCauses = builtRule.PossibleCauses;
+            existing.RecommendedChecks = builtRule.RecommendedChecks;
+            TroubleshootingEditorNote = $"Updated troubleshooting rule: {existing.Symptom}.";
+        }
+        else
+        {
+            _rules.Add(builtRule);
+            _editingRuleId = builtRule.Id;
+            TroubleshootingEditorNote = $"Added troubleshooting rule: {builtRule.Symptom}.";
+        }
+
+        await PersistTroubleshootingRulesAsync();
+        LoadSymptomOptions();
+        SymptomComboBox.SelectedItem = builtRule.Symptom;
+    }
+
+    private async void DeleteTroubleshootingRuleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryRequirePermission(UserPermission.ManageTroubleshooting, "delete troubleshooting rules"))
+        {
+            TroubleshootingEditorNote = $"{SelectedRole} role cannot delete troubleshooting rules.";
+            return;
+        }
+
+        if (!_editingRuleId.HasValue)
+        {
+            TroubleshootingEditorNote = "Select a troubleshooting rule first.";
+            return;
+        }
+
+        var existing = _rules.FirstOrDefault(rule => rule.Id == _editingRuleId.Value);
+        if (existing is null)
+        {
+            TroubleshootingEditorNote = "Selected troubleshooting rule no longer exists.";
+            return;
+        }
+
+        _rules.Remove(existing);
+        await PersistTroubleshootingRulesAsync();
+        LoadSymptomOptions();
+        PopulateTroubleshootingEditor(null);
+        PossibleCauses.Clear();
+        RecommendedChecks.Clear();
+        SelectedSymptomTitle = "Guided Checks";
+        TroubleshootingEditorNote = $"Deleted troubleshooting rule: {existing.Symptom}.";
+    }
+
+    private async Task PersistTroubleshootingRulesAsync()
+    {
+        try
+        {
+            await _dataService.SaveTroubleshootingRulesAsync(_rules, Environment.UserName, SelectedRole);
+            await RefreshProductionRecordsAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                $"Failed to save troubleshooting rules.\n\n{ex.Message}",
+                "Troubleshooting Rule Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private void PopulateTroubleshootingEditor(TroubleshootingRule? rule)
+    {
+        _editingRuleId = rule?.Id;
+        RuleSymptomTextBox.Text = rule?.Symptom ?? string.Empty;
+        PossibleCausesEditorTextBox.Text = rule is null
+            ? string.Empty
+            : string.Join(Environment.NewLine, rule.PossibleCauses);
+        RecommendedChecksEditorTextBox.Text = rule is null
+            ? string.Empty
+            : string.Join(Environment.NewLine, rule.RecommendedChecks);
+        TroubleshootingEditorNote = rule is null
+            ? "Ready for a new troubleshooting rule."
+            : $"Editing troubleshooting rule: {rule.Symptom}.";
+    }
+
+    private bool TryBuildTroubleshootingRuleFromEditor(out TroubleshootingRule rule)
+    {
+        rule = new TroubleshootingRule();
+        var symptom = RuleSymptomTextBox.Text.Trim();
+        var causes = _troubleshootingService.ParseMultilineList(PossibleCausesEditorTextBox.Text);
+        var checks = _troubleshootingService.ParseMultilineList(RecommendedChecksEditorTextBox.Text);
+
+        if (string.IsNullOrWhiteSpace(symptom))
+        {
+            TroubleshootingEditorNote = "Symptom is required.";
+            return false;
+        }
+
+        if (causes.Count == 0)
+        {
+            TroubleshootingEditorNote = "Add at least one possible cause.";
+            return false;
+        }
+
+        if (checks.Count == 0)
+        {
+            TroubleshootingEditorNote = "Add at least one recommended check.";
+            return false;
+        }
+
+        rule = new TroubleshootingRule
+        {
+            Id = _editingRuleId ?? Guid.NewGuid(),
+            Symptom = symptom,
+            PossibleCauses = causes,
+            RecommendedChecks = checks
+        };
+
+        return true;
     }
 
     private void ExportTasksCsvButton_Click(object sender, RoutedEventArgs e)

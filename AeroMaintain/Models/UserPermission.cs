@@ -9,5 +9,6 @@ public enum UserPermission
     ImportEquipment,
     ExportData,
     ViewAuditTrail,
+    ManageTroubleshooting,
     ConfigureSystem
 }
