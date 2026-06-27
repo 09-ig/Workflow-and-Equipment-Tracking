@@ -15,7 +15,6 @@ public partial class AddAuditUserRole : Migration
         migrationBuilder.AddColumn<string>(
             name: "UserRole",
             table: "AuditLogs",
-            type: "TEXT",
             nullable: false,
             defaultValue: "Admin");
     }

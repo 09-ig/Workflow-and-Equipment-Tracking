@@ -1,14 +1,13 @@
 using System.IO;
 using System.Text.Json;
 using AeroMaintain.Models;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace AeroMaintain.Data;
 
 public class AeroMaintainDbContext : DbContext
 {
-    private readonly string? _dbPath;
+    private readonly DatabaseSettings _settings;
 
     public DbSet<Equipment> Equipment { get; set; } = null!;
     public DbSet<TroubleshootingRule> TroubleshootingRules { get; set; } = null!;
@@ -17,29 +16,30 @@ public class AeroMaintainDbContext : DbContext
 
     public AeroMaintainDbContext()
     {
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "AeroMaintain");
-        Directory.CreateDirectory(dir);
-        _dbPath = Path.Combine(dir, "aeromaintain.db");
+        _settings = DatabaseSettings.ResolveDefault();
     }
 
     public AeroMaintainDbContext(string dbPath)
     {
-        _dbPath = dbPath;
+        _settings = DatabaseSettings.ForSqlitePath(dbPath);
+    }
+
+    public AeroMaintainDbContext(DatabaseSettings settings)
+    {
+        _settings = settings;
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
         {
-            var connectionString = new SqliteConnectionStringBuilder
+            if (_settings.IsSqlServer)
             {
-                DataSource = _dbPath,
-                Pooling = false
-            }.ToString();
+                optionsBuilder.UseSqlServer(_settings.ConnectionString);
+                return;
+            }
 
-            optionsBuilder.UseSqlite(connectionString);
+            optionsBuilder.UseSqlite(_settings.ConnectionString);
         }
     }
 

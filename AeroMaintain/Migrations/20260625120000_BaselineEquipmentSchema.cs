@@ -17,15 +17,15 @@ public partial class BaselineEquipmentSchema : Migration
             name: "Equipment",
             columns: table => new
             {
-                Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                Name = table.Column<string>(type: "TEXT", nullable: false),
-                SerialNumber = table.Column<string>(type: "TEXT", nullable: false),
-                Category = table.Column<string>(type: "TEXT", nullable: false),
-                LastMaintenanceDate = table.Column<DateTime>(type: "TEXT", nullable: false),
-                MaintenanceIntervalDays = table.Column<int>(type: "INTEGER", nullable: false),
-                Status = table.Column<string>(type: "TEXT", nullable: false),
-                RecentIssueCount = table.Column<int>(type: "INTEGER", nullable: false),
-                Notes = table.Column<string>(type: "TEXT", nullable: false)
+                Id = table.Column<Guid>(nullable: false),
+                Name = table.Column<string>(nullable: false),
+                SerialNumber = table.Column<string>(nullable: false),
+                Category = table.Column<string>(nullable: false),
+                LastMaintenanceDate = table.Column<DateTime>(nullable: false),
+                MaintenanceIntervalDays = table.Column<int>(nullable: false),
+                Status = table.Column<string>(nullable: false),
+                RecentIssueCount = table.Column<int>(nullable: false),
+                Notes = table.Column<string>(nullable: false)
             },
             constraints: table =>
             {
@@ -36,10 +36,10 @@ public partial class BaselineEquipmentSchema : Migration
             name: "TroubleshootingRules",
             columns: table => new
             {
-                Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                Symptom = table.Column<string>(type: "TEXT", nullable: false),
-                PossibleCauses = table.Column<string>(type: "TEXT", nullable: false),
-                RecommendedChecks = table.Column<string>(type: "TEXT", nullable: false)
+                Id = table.Column<Guid>(nullable: false),
+                Symptom = table.Column<string>(nullable: false),
+                PossibleCauses = table.Column<string>(nullable: false),
+                RecommendedChecks = table.Column<string>(nullable: false)
             },
             constraints: table =>
             {

@@ -83,6 +83,9 @@
                                   SelectedItem="{Binding SelectedRole}" />
                     </StackPanel>
                     <TextBlock Foreground="#D5D8DB" FontSize="12" HorizontalAlignment="Right" Margin="0,4,0,0" Text="{Binding TodayLabel}" />
+                    <TextBlock Foreground="#D5D8DB" FontSize="12" HorizontalAlignment="Right" Margin="0,6,0,0" Text="Database" />
+                    <TextBlock Foreground="#F3F0E8" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right" Text="{Binding DatabaseModeLabel}" />
+                    <TextBlock Foreground="#D5D8DB" FontSize="11" HorizontalAlignment="Right" Text="{Binding DatabaseConfigNote}" />
                 </StackPanel>
             </Grid>
         </Border>

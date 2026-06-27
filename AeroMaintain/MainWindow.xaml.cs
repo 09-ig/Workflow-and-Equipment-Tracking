@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using AeroMaintain.Data;
 using AeroMaintain.Models;
 using AeroMaintain.Services;
 
@@ -50,6 +51,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _alertNote = "Critical and overdue equipment will appear here.";
     private string _currentUserLabel = string.Empty;
     private string _roleStatusNote = string.Empty;
+    private string _databaseModeLabel = string.Empty;
+    private string _databaseConfigNote = string.Empty;
     private string _selectedStatusFilter = "All";
     private string _selectedDueFilter = "All";
     private string _searchText = string.Empty;
@@ -202,6 +205,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         set => SetProperty(ref _roleStatusNote, value);
     }
 
+    public string DatabaseModeLabel
+    {
+        get => _databaseModeLabel;
+        set => SetProperty(ref _databaseModeLabel, value);
+    }
+
+    public string DatabaseConfigNote
+    {
+        get => _databaseConfigNote;
+        set => SetProperty(ref _databaseConfigNote, value);
+    }
+
     public UserRole SelectedRole
     {
         get => _selectedRole;
@@ -288,6 +303,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         MaintenancePartsTextBox.Text = "None";
         MaintenanceLaborHoursTextBox.Text = "0";
         MaintenanceCostTextBox.Text = "0";
+        DatabaseModeLabel = _dataService.Settings.Describe();
+        DatabaseConfigNote = $"Settings file: {DatabaseSettings.ResolveSettingsFilePath()}";
         RefreshPermissions();
     }
 

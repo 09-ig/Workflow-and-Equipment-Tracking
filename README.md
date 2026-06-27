@@ -18,6 +18,7 @@ A Windows desktop application for tracking equipment health, scheduling maintena
 - Duplicate serial number validation
 - Auto-computed next due date, health score, and health label
 - SQLite persistence with EF Core migrations
+- Optional SQL Server Express/shared database mode
 - Demo JSON seed data loaded on first run
 
 ### Maintenance Scheduler
@@ -57,6 +58,7 @@ A Windows desktop application for tracking equipment health, scheduling maintena
 | Desktop alerts | Windows Forms `NotifyIcon` balloon notifications |
 | Language | C# 12 |
 | Data storage | SQLite via EF Core migrations |
+| Shared DB option | SQL Server / SQL Server Express via EF Core provider |
 | Seed data | JSON files in `AeroMaintain/Data` |
 | Unit testing | xUnit 2.9 with coverlet |
 | Build tooling | .NET SDK 8 |
@@ -68,6 +70,9 @@ C# project/
 |-- AeroMaintain/
 |   |-- Data/
 |   |   |-- AeroMaintainDbContext.cs
+|   |   |-- DatabaseProvider.cs
+|   |   |-- DatabaseSettings.cs
+|   |   |-- database.settings.example.json
 |   |   |-- equipment.json
 |   |   `-- troubleshooting_rules.json
 |   |-- Migrations/
@@ -134,7 +139,34 @@ dotnet run --project AeroMaintain
 dotnet build AeroMaintain -c Release
 ```
 
-The app stores its local database under the user's LocalAppData `AeroMaintain` folder. On first run, demo equipment and troubleshooting data are seeded from JSON.
+The app stores its local SQLite database under the user's LocalAppData `AeroMaintain` folder. On first run, demo equipment and troubleshooting data are seeded from JSON.
+
+## Shared Database Mode
+
+SQLite remains the default. To point the app at SQL Server Express, create this file:
+
+```text
+%LocalAppData%\AeroMaintain\database.settings.json
+```
+
+Use this content:
+
+```json
+{
+  "Provider": "SqlServer",
+  "ConnectionString": "Server=.\\SQLEXPRESS;Database=AeroMaintain;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
+}
+```
+
+You can also use environment variables:
+
+```powershell
+$env:AEROMAINTAIN_DB_PROVIDER = "SqlServer"
+$env:AEROMAINTAIN_CONNECTION_STRING = "Server=.\SQLEXPRESS;Database=AeroMaintain;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
+dotnet run --project AeroMaintain
+```
+
+The header shows the active database provider and where settings were loaded from.
 
 ## Running Tests
 
@@ -142,10 +174,11 @@ The app stores its local database under the user's LocalAppData `AeroMaintain` f
 dotnet test AeroMaintain.Tests
 ```
 
-Current suite: 50 tests.
+Current suite: 53 tests.
 
 | Test class | Count | Coverage focus |
 |---|---:|---|
+| DatabaseSettingsTests | 3 | SQLite/SQL Server configuration helpers |
 | HealthScoreServiceTests | 9 | Scoring, penalty caps, labels, fleet averages |
 | MaintenanceServiceTests | 8 | Due dates, priority labels, filters |
 | NotificationServiceTests | 5 | Alert severity, ordering, summary text |
@@ -157,12 +190,13 @@ Current suite: 50 tests.
 ## Manual Smoke Test
 
 1. Open the dashboard and confirm summary counts populate.
-2. Change the session role in the header and confirm buttons enable/disable by role.
-3. Review Operational Notifications and click **Show Desktop Notification**.
-4. Search the Equipment Registry by name, serial number, and category.
-5. As Technician, select a record and log maintenance.
-6. As Supervisor, add or edit equipment and verify the audit role column.
-7. As Admin, confirm delete access is available.
-8. Switch to Maintenance Scheduler and cycle through status and due-date filters.
-9. Open Guided Troubleshooting and cycle through symptoms.
-10. Generate a report and export both CSV files.
+2. Confirm the header shows the active database provider.
+3. Change the session role in the header and confirm buttons enable/disable by role.
+4. Review Operational Notifications and click **Show Desktop Notification**.
+5. Search the Equipment Registry by name, serial number, and category.
+6. As Technician, select a record and log maintenance.
+7. As Supervisor, add or edit equipment and verify the audit role column.
+8. As Admin, confirm delete access is available.
+9. Switch to Maintenance Scheduler and cycle through status and due-date filters.
+10. Open Guided Troubleshooting and cycle through symptoms.
+11. Generate a report and export both CSV files.

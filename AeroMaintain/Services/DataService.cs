@@ -12,18 +12,25 @@ public class DataService
     private const string BaselineMigrationId = "20260625120000_BaselineEquipmentSchema";
     private const string EfProductVersion = "8.0.0";
 
-    private readonly string _dbPath;
+    private readonly DatabaseSettings _settings;
     private readonly bool _seedFromJson;
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    public DataService() : this(ResolveDbPath()) { }
+    public DataService() : this(DatabaseSettings.ResolveDefault()) { }
 
     public DataService(string dbPath, bool seedFromJson = true)
+        : this(DatabaseSettings.ForSqlitePath(dbPath), seedFromJson)
     {
-        _dbPath = dbPath;
+    }
+
+    public DataService(DatabaseSettings settings, bool seedFromJson = true)
+    {
+        _settings = settings;
         _seedFromJson = seedFromJson;
         InitializeDatabase();
     }
+
+    public DatabaseSettings Settings => _settings;
 
     public async Task<List<Equipment>> LoadEquipmentAsync()
     {
@@ -330,16 +337,7 @@ public class DataService
         command.ExecuteNonQuery();
     }
 
-    private AeroMaintainDbContext CreateContext() => new(_dbPath);
-
-    private static string ResolveDbPath()
-    {
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "AeroMaintain");
-        Directory.CreateDirectory(dir);
-        return Path.Combine(dir, "aeromaintain.db");
-    }
+    private AeroMaintainDbContext CreateContext() => new(_settings);
 
     private static void AddEquipmentChangeAudits(
         ICollection<AuditLog> auditLogs,

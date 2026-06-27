@@ -1,0 +1,4 @@
+{
+  "Provider": "SqlServer",
+  "ConnectionString": "Server=.\\SQLEXPRESS;Database=AeroMaintain;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True"
+}

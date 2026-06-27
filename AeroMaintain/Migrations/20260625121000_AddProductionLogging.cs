@@ -17,16 +17,16 @@ public partial class AddProductionLogging : Migration
             name: "AuditLogs",
             columns: table => new
             {
-                Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                ChangedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
-                UserName = table.Column<string>(type: "TEXT", nullable: false),
-                EntityName = table.Column<string>(type: "TEXT", nullable: false),
-                EntityId = table.Column<Guid>(type: "TEXT", nullable: true),
-                Action = table.Column<string>(type: "TEXT", nullable: false),
-                FieldName = table.Column<string>(type: "TEXT", nullable: false),
-                OldValue = table.Column<string>(type: "TEXT", nullable: true),
-                NewValue = table.Column<string>(type: "TEXT", nullable: true),
-                Description = table.Column<string>(type: "TEXT", nullable: false)
+                Id = table.Column<Guid>(nullable: false),
+                ChangedAtUtc = table.Column<DateTime>(nullable: false),
+                UserName = table.Column<string>(nullable: false),
+                EntityName = table.Column<string>(nullable: false),
+                EntityId = table.Column<Guid>(nullable: true),
+                Action = table.Column<string>(nullable: false),
+                FieldName = table.Column<string>(nullable: false),
+                OldValue = table.Column<string>(nullable: true),
+                NewValue = table.Column<string>(nullable: true),
+                Description = table.Column<string>(nullable: false)
             },
             constraints: table =>
             {
@@ -37,17 +37,17 @@ public partial class AddProductionLogging : Migration
             name: "MaintenanceLogs",
             columns: table => new
             {
-                Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                EquipmentId = table.Column<Guid>(type: "TEXT", nullable: false),
-                EquipmentName = table.Column<string>(type: "TEXT", nullable: false),
-                CompletedOn = table.Column<DateTime>(type: "TEXT", nullable: false),
-                PerformedBy = table.Column<string>(type: "TEXT", nullable: false),
-                WorkSummary = table.Column<string>(type: "TEXT", nullable: false),
-                PartsReplaced = table.Column<string>(type: "TEXT", nullable: false),
-                Cost = table.Column<decimal>(type: "TEXT", nullable: false),
-                LaborHours = table.Column<double>(type: "REAL", nullable: false),
-                Notes = table.Column<string>(type: "TEXT", nullable: false),
-                LoggedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false)
+                Id = table.Column<Guid>(nullable: false),
+                EquipmentId = table.Column<Guid>(nullable: false),
+                EquipmentName = table.Column<string>(nullable: false),
+                CompletedOn = table.Column<DateTime>(nullable: false),
+                PerformedBy = table.Column<string>(nullable: false),
+                WorkSummary = table.Column<string>(nullable: false),
+                PartsReplaced = table.Column<string>(nullable: false),
+                Cost = table.Column<decimal>(nullable: false),
+                LaborHours = table.Column<double>(nullable: false),
+                Notes = table.Column<string>(nullable: false),
+                LoggedAtUtc = table.Column<DateTime>(nullable: false)
             },
             constraints: table =>
             {
