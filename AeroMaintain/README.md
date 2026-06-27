@@ -1,6 +1,6 @@
 # AeroMaintain App
 
-WPF desktop app for equipment registry management, maintenance scheduling, operational notifications, maintenance completion history, audit logging, troubleshooting guidance, and operational exports.
+WPF desktop app for equipment registry management, maintenance scheduling, operational notifications, role-based access control, maintenance completion history, audit logging, troubleshooting guidance, and operational exports.
 
 ## Runtime Data
 
@@ -17,7 +17,9 @@ WPF desktop app for equipment registry management, maintenance scheduling, opera
 - `Models/MaintenanceLog.cs`: completed maintenance history.
 - `Models/MaintenanceAlert.cs`: active operational notification read model.
 - `Models/AuditLog.cs`: create/update/delete audit records.
+- `Models/UserRole.cs` and `Models/UserPermission.cs`: role and permission primitives.
 - `Services/DataService.cs`: migrations, seed loading, equipment persistence, maintenance logging, and audit writes.
+- `Services/PermissionService.cs`: role-permission matrix.
 - `Services/NotificationService.cs`: builds critical, warning, and info alerts from maintenance tasks.
 - `Services/DesktopNotificationService.cs`: sends Windows tray-style alert summaries.
 - `MainWindow.xaml`: dashboard, registry, scheduler, troubleshooting, history/audit, and export tabs.

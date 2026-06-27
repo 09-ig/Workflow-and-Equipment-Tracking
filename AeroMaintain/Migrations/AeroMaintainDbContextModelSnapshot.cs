@@ -52,6 +52,10 @@ partial class AeroMaintainDbContextModelSnapshot : ModelSnapshot
                 .IsRequired()
                 .HasColumnType("TEXT");
 
+            b.Property<string>("UserRole")
+                .IsRequired()
+                .HasColumnType("TEXT");
+
             b.HasKey("Id");
 
             b.HasIndex("ChangedAtUtc");

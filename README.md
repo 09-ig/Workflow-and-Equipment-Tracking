@@ -14,6 +14,7 @@ A Windows desktop application for tracking equipment health, scheduling maintena
 
 ### Equipment Registry
 - Add, edit, delete, search, and import equipment records
+- Role-based controls for technician, supervisor, and admin workflows
 - Duplicate serial number validation
 - Auto-computed next due date, health score, and health label
 - SQLite persistence with EF Core migrations
@@ -29,8 +30,15 @@ A Windows desktop application for tracking equipment health, scheduling maintena
 ### Maintenance History and Audit
 - Maintenance completion log with technician, work summary, parts, cost, labor hours, and notes
 - Per-equipment history focus when a registry row is selected
-- Audit trail for equipment create/update/delete events and maintenance-date changes
+- Audit trail for equipment create/update/delete events and maintenance-date changes, including username and active role
 - Legacy `EnsureCreated()` databases are baselined before new migrations are applied
+
+### Identity and Permissions
+- Current Windows user shown in the app header
+- Session role selector for local testing: `Technician`, `Supervisor`, `Admin`
+- Technician: view equipment and log maintenance
+- Supervisor: edit/import/export equipment data and review audit history
+- Admin: full access, including equipment deletion and configuration permissions
 
 ### Guided Troubleshooting
 - Rule-based lookup for common symptoms
@@ -65,6 +73,7 @@ C# project/
 |   |-- Migrations/
 |   |   |-- 20260625120000_BaselineEquipmentSchema.cs
 |   |   |-- 20260625121000_AddProductionLogging.cs
+|   |   |-- 20260627100000_AddAuditUserRole.cs
 |   |   `-- AeroMaintainDbContextModelSnapshot.cs
 |   |-- Models/
 |   |   |-- AuditLog.cs
@@ -75,6 +84,8 @@ C# project/
 |   |   |-- MaintenanceAlert.cs
 |   |   |-- MaintenanceAlertSeverity.cs
 |   |   |-- MaintenanceTask.cs
+|   |   |-- UserPermission.cs
+|   |   |-- UserRole.cs
 |   |   `-- TroubleshootingRule.cs
 |   |-- Services/
 |   |   |-- CsvImportService.cs
@@ -83,6 +94,7 @@ C# project/
 |   |   |-- HealthScoreService.cs
 |   |   |-- MaintenanceService.cs
 |   |   |-- NotificationService.cs
+|   |   |-- PermissionService.cs
 |   |   |-- DesktopNotificationService.cs
 |   |   `-- TroubleshootingService.cs
 |   |-- MainWindow.xaml
@@ -93,6 +105,7 @@ C# project/
     |-- HealthScoreServiceTests.cs
     |-- MaintenanceServiceTests.cs
     |-- NotificationServiceTests.cs
+    |-- PermissionServiceTests.cs
     `-- TroubleshootingServiceTests.cs
 ```
 
@@ -107,6 +120,7 @@ SQLite + EF Core migrations -> DataService -> MainWindow
                                       |-- HealthScoreService
                                       |-- MaintenanceService
                                       |-- NotificationService
+                                      |-- PermissionService
                                       |-- TroubleshootingService
                                       `-- ExportService
 ```
@@ -128,13 +142,14 @@ The app stores its local database under the user's LocalAppData `AeroMaintain` f
 dotnet test AeroMaintain.Tests
 ```
 
-Current suite: 46 tests.
+Current suite: 50 tests.
 
 | Test class | Count | Coverage focus |
 |---|---:|---|
 | HealthScoreServiceTests | 9 | Scoring, penalty caps, labels, fleet averages |
 | MaintenanceServiceTests | 8 | Due dates, priority labels, filters |
 | NotificationServiceTests | 5 | Alert severity, ordering, summary text |
+| PermissionServiceTests | 4 | Role-permission matrix and role descriptions |
 | TroubleshootingServiceTests | 4 | Symptom lookup behavior |
 | DataServiceTests | 8 | SQLite persistence, migrations, legacy upgrade path, audit entries, maintenance history |
 | ExportServiceTests | 11 | CSV and text report generation |
@@ -142,10 +157,12 @@ Current suite: 46 tests.
 ## Manual Smoke Test
 
 1. Open the dashboard and confirm summary counts populate.
-2. Review Operational Notifications and click **Show Desktop Notification**.
-3. Search the Equipment Registry by name, serial number, and category.
-4. Select a record, fill maintenance completion details, click **Log Maintenance (Today)**, then verify the next due date and History and Audit tab update.
-5. Add a new equipment item, save, restart the app, and confirm it reloads.
-6. Switch to Maintenance Scheduler and cycle through status and due-date filters.
-7. Open Guided Troubleshooting and cycle through symptoms.
-8. Generate a report and export both CSV files.
+2. Change the session role in the header and confirm buttons enable/disable by role.
+3. Review Operational Notifications and click **Show Desktop Notification**.
+4. Search the Equipment Registry by name, serial number, and category.
+5. As Technician, select a record and log maintenance.
+6. As Supervisor, add or edit equipment and verify the audit role column.
+7. As Admin, confirm delete access is available.
+8. Switch to Maintenance Scheduler and cycle through status and due-date filters.
+9. Open Guided Troubleshooting and cycle through symptoms.
+10. Generate a report and export both CSV files.

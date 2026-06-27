@@ -5,6 +5,7 @@ public class AuditLog
     public Guid Id { get; set; } = Guid.NewGuid();
     public DateTime ChangedAtUtc { get; set; } = DateTime.UtcNow;
     public string UserName { get; set; } = string.Empty;
+    public string UserRole { get; set; } = "Admin";
     public string EntityName { get; set; } = string.Empty;
     public Guid? EntityId { get; set; }
     public string Action { get; set; } = string.Empty;

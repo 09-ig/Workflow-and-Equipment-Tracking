@@ -21,6 +21,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly CsvImportService _csvImportService = new();
     private readonly NotificationService _notificationService = new();
     private readonly DesktopNotificationService _desktopNotificationService = new();
+    private readonly PermissionService _permissionService = new();
 
     private readonly List<Equipment> _equipmentStore = new();
     private readonly List<TroubleshootingRule> _rules = new();
@@ -47,9 +48,18 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _auditNote = "Audit events will appear after equipment changes.";
     private string _alertSummary = "No active operational notifications.";
     private string _alertNote = "Critical and overdue equipment will appear here.";
+    private string _currentUserLabel = string.Empty;
+    private string _roleStatusNote = string.Empty;
     private string _selectedStatusFilter = "All";
     private string _selectedDueFilter = "All";
     private string _searchText = string.Empty;
+    private UserRole _selectedRole = UserRole.Admin;
+    private bool _canEditEquipment;
+    private bool _canDeleteEquipment;
+    private bool _canLogMaintenance;
+    private bool _canImportEquipment;
+    private bool _canExportData;
+    private bool _canViewAudit;
     private bool _startupNotificationShown;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -64,6 +74,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public ObservableCollection<AuditLog> AuditTrail { get; } = new();
     public ObservableCollection<MaintenanceAlert> ActiveAlerts { get; } = new();
 
+    public List<UserRole> RoleOptions { get; } = Enum.GetValues<UserRole>().ToList();
     public List<string> StatusFilterOptions { get; } = new() { "All", "Healthy", "Watch", "Critical" };
     public List<string> DueFilterOptions { get; } = new() { "All", "Overdue", "Due within 7 days", "Due within 30 days" };
 
@@ -179,6 +190,68 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         set => SetProperty(ref _alertNote, value);
     }
 
+    public string CurrentUserLabel
+    {
+        get => _currentUserLabel;
+        set => SetProperty(ref _currentUserLabel, value);
+    }
+
+    public string RoleStatusNote
+    {
+        get => _roleStatusNote;
+        set => SetProperty(ref _roleStatusNote, value);
+    }
+
+    public UserRole SelectedRole
+    {
+        get => _selectedRole;
+        set
+        {
+            if (!SetProperty(ref _selectedRole, value))
+            {
+                return;
+            }
+
+            RefreshPermissions();
+        }
+    }
+
+    public bool CanEditEquipment
+    {
+        get => _canEditEquipment;
+        set => SetProperty(ref _canEditEquipment, value);
+    }
+
+    public bool CanDeleteEquipment
+    {
+        get => _canDeleteEquipment;
+        set => SetProperty(ref _canDeleteEquipment, value);
+    }
+
+    public bool CanLogMaintenance
+    {
+        get => _canLogMaintenance;
+        set => SetProperty(ref _canLogMaintenance, value);
+    }
+
+    public bool CanImportEquipment
+    {
+        get => _canImportEquipment;
+        set => SetProperty(ref _canImportEquipment, value);
+    }
+
+    public bool CanExportData
+    {
+        get => _canExportData;
+        set => SetProperty(ref _canExportData, value);
+    }
+
+    public bool CanViewAudit
+    {
+        get => _canViewAudit;
+        set => SetProperty(ref _canViewAudit, value);
+    }
+
     public string SelectedStatusFilter
     {
         get => _selectedStatusFilter;
@@ -215,6 +288,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         MaintenancePartsTextBox.Text = "None";
         MaintenanceLaborHoursTextBox.Text = "0";
         MaintenanceCostTextBox.Text = "0";
+        RefreshPermissions();
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -352,6 +426,30 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             : $"{ActiveAlerts.Count} active notifications shown. Critical items are ordered first.";
     }
 
+    private void RefreshPermissions()
+    {
+        CurrentUserLabel = $"{Environment.UserName} | {SelectedRole}";
+        RoleStatusNote = _permissionService.DescribeRole(SelectedRole);
+        CanEditEquipment = _permissionService.HasPermission(SelectedRole, UserPermission.EditEquipment);
+        CanDeleteEquipment = _permissionService.HasPermission(SelectedRole, UserPermission.DeleteEquipment);
+        CanLogMaintenance = _permissionService.HasPermission(SelectedRole, UserPermission.LogMaintenance);
+        CanImportEquipment = _permissionService.HasPermission(SelectedRole, UserPermission.ImportEquipment);
+        CanExportData = _permissionService.HasPermission(SelectedRole, UserPermission.ExportData);
+        CanViewAudit = _permissionService.HasPermission(SelectedRole, UserPermission.ViewAuditTrail);
+        RefreshHistoryViews();
+    }
+
+    private bool TryRequirePermission(UserPermission permission, string action)
+    {
+        if (_permissionService.HasPermission(SelectedRole, permission))
+        {
+            return true;
+        }
+
+        RegistryNote = $"{SelectedRole} role cannot {action}.";
+        return false;
+    }
+
     private void ShowStartupDesktopNotificationIfNeeded()
     {
         if (_startupNotificationShown || ActiveAlerts.Count == 0)
@@ -401,6 +499,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             : $"{MaintenanceHistory.Count} recent maintenance log entries shown across the fleet.";
 
         AuditTrail.Clear();
+        if (!CanViewAudit)
+        {
+            AuditNote = $"{SelectedRole} role can use maintenance workflow but cannot view audit history.";
+            return;
+        }
+
         foreach (var audit in _auditLogStore
                      .OrderByDescending(a => a.ChangedAtUtc)
                      .Take(200))
@@ -443,6 +547,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private async void SaveEquipmentButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryRequirePermission(UserPermission.EditEquipment, "add or edit equipment"))
+        {
+            return;
+        }
+
         if (!TryBuildEquipmentFromForm(out var builtEquipment))
         {
             return;
@@ -480,6 +589,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private async void DeleteSelectedButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryRequirePermission(UserPermission.DeleteEquipment, "delete equipment"))
+        {
+            return;
+        }
+
         if (SelectedEquipment is null)
         {
             RegistryNote = "Select a row first, then delete.";
@@ -502,6 +616,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private async void PersistButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryRequirePermission(UserPermission.EditEquipment, "save equipment changes"))
+        {
+            return;
+        }
+
         await PersistEquipmentAsync();
         RegistryNote = "Equipment registry saved to the local database.";
     }
@@ -519,6 +638,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private async void MarkMaintainedButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryRequirePermission(UserPermission.LogMaintenance, "log maintenance"))
+        {
+            return;
+        }
+
         if (SelectedEquipment is null)
         {
             RegistryNote = "Select a row first, then log maintenance.";
@@ -554,7 +678,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 laborHours,
                 DateTime.Today,
                 notes,
-                Environment.UserName);
+                Environment.UserName,
+                SelectedRole);
 
             existing.LastMaintenanceDate = log.CompletedOn;
             RegistryNote = $"Logged maintenance for {existing.Name} on {log.CompletedOn:yyyy-MM-dd}.";
@@ -665,6 +790,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void ExportTasksCsvButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryRequirePermission(UserPermission.ExportData, "export task data"))
+        {
+            LastExportMessage = $"{SelectedRole} role cannot export task data.";
+            return;
+        }
+
         try
         {
             var path = _exportService.ExportTasksCsv(FilteredTasks, GetExportDirectory());
@@ -690,6 +821,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void ExportEquipmentCsvButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryRequirePermission(UserPermission.ExportData, "export equipment data"))
+        {
+            LastExportMessage = $"{SelectedRole} role cannot export equipment data.";
+            return;
+        }
+
         try
         {
             var path = _exportService.ExportEquipmentCsv(_equipmentStore, GetExportDirectory());
@@ -703,6 +840,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void GenerateReportButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryRequirePermission(UserPermission.ExportData, "generate reports"))
+        {
+            LastExportMessage = $"{SelectedRole} role cannot generate reports.";
+            return;
+        }
+
         try
         {
             var path = _exportService.BuildTextReport(
@@ -722,6 +865,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private async void ImportCsvButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryRequirePermission(UserPermission.ImportEquipment, "import equipment"))
+        {
+            return;
+        }
+
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
             Title = "Import Equipment from CSV",
@@ -772,7 +920,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         try
         {
-            await _dataService.SaveEquipmentAsync(_equipmentStore, Environment.UserName);
+            await _dataService.SaveEquipmentAsync(_equipmentStore, Environment.UserName, SelectedRole);
             await RefreshProductionRecordsAsync();
         }
         catch (Exception ex)
@@ -922,15 +1070,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             "Exports");
     }
 
-    private void SetProperty<T>(ref T storage, T value, [CallerMemberName] string? propertyName = null)
+    private bool SetProperty<T>(ref T storage, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(storage, value))
         {
-            return;
+            return false;
         }
 
         storage = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        return true;
     }
 
     protected override void OnClosed(EventArgs e)

@@ -127,12 +127,12 @@ public class DataServiceTests : IDisposable
             Status = EquipmentStatus.Healthy
         };
 
-        await _service.SaveEquipmentAsync([equipment], "tester");
+        await _service.SaveEquipmentAsync([equipment], "tester", UserRole.Supervisor);
 
         equipment.Status = EquipmentStatus.Critical;
-        await _service.SaveEquipmentAsync([equipment], "tester");
+        await _service.SaveEquipmentAsync([equipment], "tester", UserRole.Supervisor);
 
-        await _service.SaveEquipmentAsync([], "tester");
+        await _service.SaveEquipmentAsync([], "tester", UserRole.Supervisor);
 
         var auditLogs = await _service.LoadAuditLogsAsync();
 
@@ -140,7 +140,8 @@ public class DataServiceTests : IDisposable
             a.Action == "Created" &&
             a.EntityName == nameof(Equipment) &&
             a.EntityId == equipment.Id &&
-            a.UserName == "tester");
+            a.UserName == "tester" &&
+            a.UserRole == nameof(UserRole.Supervisor));
 
         Assert.Contains(auditLogs, a =>
             a.Action == "Updated" &&
@@ -179,7 +180,8 @@ public class DataServiceTests : IDisposable
             2.5,
             new DateTime(2026, 2, 15),
             "No abnormal vibration found.",
-            "tech.one");
+            "tech.one",
+            UserRole.Technician);
 
         var loadedEquipment = await _service.LoadEquipmentAsync();
         var updated = Assert.Single(loadedEquipment);
@@ -198,7 +200,8 @@ public class DataServiceTests : IDisposable
         Assert.Contains(auditLogs, a =>
             a.EntityName == nameof(MaintenanceLog) &&
             a.EntityId == log.Id &&
-            a.Action == "Created");
+            a.Action == "Created" &&
+            a.UserRole == nameof(UserRole.Technician));
         Assert.Contains(auditLogs, a =>
             a.EntityName == nameof(Equipment) &&
             a.EntityId == equipment.Id &&

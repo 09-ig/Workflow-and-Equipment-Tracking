@@ -38,7 +38,10 @@ public class DataService
         return items;
     }
 
-    public async Task SaveEquipmentAsync(IEnumerable<Equipment> equipment, string? actor = null)
+    public async Task SaveEquipmentAsync(
+        IEnumerable<Equipment> equipment,
+        string? actor = null,
+        UserRole actorRole = UserRole.Admin)
     {
         var incoming = equipment.ToList();
         await using var ctx = CreateContext();
@@ -47,6 +50,7 @@ public class DataService
         var existing = await ctx.Equipment.ToListAsync();
         var auditLogs = new List<AuditLog>();
         var userName = NormalizeActor(actor);
+        var roleName = actorRole.ToString();
         var changedAtUtc = DateTime.UtcNow;
 
         var toDelete = existing.Where(e => incoming.All(n => n.Id != e.Id)).ToList();
@@ -61,6 +65,7 @@ public class DataService
                 null,
                 $"Equipment deleted: {removed.Name}",
                 userName,
+                roleName,
                 changedAtUtc));
         }
 
@@ -81,11 +86,12 @@ public class DataService
                     DescribeEquipment(item),
                     $"Equipment created: {item.Name}",
                     userName,
+                    roleName,
                     changedAtUtc));
             }
             else
             {
-                AddEquipmentChangeAudits(auditLogs, tracked, item, userName, changedAtUtc);
+                AddEquipmentChangeAudits(auditLogs, tracked, item, userName, roleName, changedAtUtc);
                 ctx.Entry(tracked).CurrentValues.SetValues(item);
             }
         }
@@ -148,7 +154,8 @@ public class DataService
         double laborHours,
         DateTime completedOn,
         string notes,
-        string? actor = null)
+        string? actor = null,
+        UserRole actorRole = UserRole.Admin)
     {
         if (cost < 0)
         {
@@ -171,6 +178,7 @@ public class DataService
 
         var completedDate = completedOn.Date;
         var userName = NormalizeActor(actor ?? performedBy);
+        var roleName = actorRole.ToString();
         var previousMaintenanceDate = equipment.LastMaintenanceDate;
         var changedAtUtc = DateTime.UtcNow;
 
@@ -201,6 +209,7 @@ public class DataService
             log.WorkSummary,
             $"Maintenance logged for {equipment.Name}.",
             userName,
+            roleName,
             changedAtUtc));
 
         if (previousMaintenanceDate.Date != completedDate)
@@ -214,6 +223,7 @@ public class DataService
                 FormatValue(completedDate),
                 $"Maintenance date updated for {equipment.Name}.",
                 userName,
+                roleName,
                 changedAtUtc));
         }
 
@@ -336,16 +346,17 @@ public class DataService
         Equipment current,
         Equipment incoming,
         string userName,
+        string roleName,
         DateTime changedAtUtc)
     {
-        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.Name), current.Name, incoming.Name, userName, changedAtUtc);
-        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.SerialNumber), current.SerialNumber, incoming.SerialNumber, userName, changedAtUtc);
-        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.Category), current.Category, incoming.Category, userName, changedAtUtc);
-        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.LastMaintenanceDate), current.LastMaintenanceDate, incoming.LastMaintenanceDate, userName, changedAtUtc);
-        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.MaintenanceIntervalDays), current.MaintenanceIntervalDays, incoming.MaintenanceIntervalDays, userName, changedAtUtc);
-        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.Status), current.Status, incoming.Status, userName, changedAtUtc);
-        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.RecentIssueCount), current.RecentIssueCount, incoming.RecentIssueCount, userName, changedAtUtc);
-        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.Notes), current.Notes, incoming.Notes, userName, changedAtUtc);
+        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.Name), current.Name, incoming.Name, userName, roleName, changedAtUtc);
+        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.SerialNumber), current.SerialNumber, incoming.SerialNumber, userName, roleName, changedAtUtc);
+        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.Category), current.Category, incoming.Category, userName, roleName, changedAtUtc);
+        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.LastMaintenanceDate), current.LastMaintenanceDate, incoming.LastMaintenanceDate, userName, roleName, changedAtUtc);
+        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.MaintenanceIntervalDays), current.MaintenanceIntervalDays, incoming.MaintenanceIntervalDays, userName, roleName, changedAtUtc);
+        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.Status), current.Status, incoming.Status, userName, roleName, changedAtUtc);
+        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.RecentIssueCount), current.RecentIssueCount, incoming.RecentIssueCount, userName, roleName, changedAtUtc);
+        AddFieldChangeAudit(auditLogs, current, nameof(Equipment.Notes), current.Notes, incoming.Notes, userName, roleName, changedAtUtc);
     }
 
     private static void AddFieldChangeAudit<T>(
@@ -355,6 +366,7 @@ public class DataService
         T oldValue,
         T newValue,
         string userName,
+        string roleName,
         DateTime changedAtUtc)
     {
         if (EqualityComparer<T>.Default.Equals(oldValue, newValue))
@@ -371,6 +383,7 @@ public class DataService
             FormatValue(newValue),
             $"Updated {equipment.Name}: {fieldName} changed.",
             userName,
+            roleName,
             changedAtUtc));
     }
 
@@ -383,6 +396,7 @@ public class DataService
         string? newValue,
         string description,
         string userName,
+        string roleName,
         DateTime changedAtUtc)
     {
         return new AuditLog
@@ -390,6 +404,7 @@ public class DataService
             Id = Guid.NewGuid(),
             ChangedAtUtc = changedAtUtc,
             UserName = userName,
+            UserRole = roleName,
             EntityName = entityName,
             EntityId = entityId,
             Action = action,

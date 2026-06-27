@@ -74,10 +74,15 @@
                     </TextBlock>
                 </StackPanel>
                 <StackPanel Grid.Column="1" HorizontalAlignment="Right">
-                    <TextBlock Foreground="#D5D8DB" FontSize="12">
-                        Snapshot Date
-                    </TextBlock>
-                    <TextBlock Foreground="#F3F0E8" FontSize="18" FontWeight="SemiBold" Text="{Binding TodayLabel}" />
+                    <TextBlock Foreground="#D5D8DB" FontSize="12" HorizontalAlignment="Right" Text="Current User" />
+                    <TextBlock Foreground="#F3F0E8" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Right" Text="{Binding CurrentUserLabel}" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+                        <TextBlock Foreground="#D5D8DB" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0" Text="Session Role" />
+                        <ComboBox Width="130"
+                                  ItemsSource="{Binding RoleOptions}"
+                                  SelectedItem="{Binding SelectedRole}" />
+                    </StackPanel>
+                    <TextBlock Foreground="#D5D8DB" FontSize="12" HorizontalAlignment="Right" Margin="0,4,0,0" Text="{Binding TodayLabel}" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -315,22 +320,24 @@
                             <TextBox x:Name="MaintenanceNotesTextBox" Margin="0,4,0,12" Height="54" TextWrapping="Wrap" AcceptsReturn="True" />
 
                             <WrapPanel Margin="0,4,0,0">
-                                <Button Content="Save Equipment" Click="SaveEquipmentButton_Click" />
+                                <Button Content="Save Equipment" Click="SaveEquipmentButton_Click" IsEnabled="{Binding CanEditEquipment}" />
                                 <Button Content="Clear Form" Click="ClearFormButton_Click" />
                             </WrapPanel>
                             <WrapPanel Margin="0,6,0,0">
-                                <Button Content="Delete Selected" Click="DeleteSelectedButton_Click" />
-                                <Button Content="Save Database" Click="PersistButton_Click" />
+                                <Button Content="Delete Selected" Click="DeleteSelectedButton_Click" IsEnabled="{Binding CanDeleteEquipment}" />
+                                <Button Content="Save Database" Click="PersistButton_Click" IsEnabled="{Binding CanEditEquipment}" />
                             </WrapPanel>
                             <WrapPanel Margin="0,6,0,0">
-                                <Button Content="Log Maintenance (Today)" Click="MarkMaintainedButton_Click" />
+                                <Button Content="Log Maintenance (Today)" Click="MarkMaintainedButton_Click" IsEnabled="{Binding CanLogMaintenance}" />
                             </WrapPanel>
                             <WrapPanel Margin="0,6,0,0">
-                                <Button Content="Import from CSV" Click="ImportCsvButton_Click" />
+                                <Button Content="Import from CSV" Click="ImportCsvButton_Click" IsEnabled="{Binding CanImportEquipment}" />
                             </WrapPanel>
 
                             <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,12,0,0"
                                        Text="{Binding RegistryNote}" TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,6,0,0"
+                                       Text="{Binding RoleStatusNote}" TextWrapping="Wrap" />
                         </StackPanel>
                         </ScrollViewer>
                     </Border>
@@ -428,7 +435,7 @@
                                 <ComboBox x:Name="SchedulerDueFilterComboBox" Width="150" Margin="0,0,10,0"
                                           ItemsSource="{Binding DueFilterOptions}" SelectedItem="{Binding SelectedDueFilter}"
                                           SelectionChanged="SchedulerFilter_SelectionChanged" />
-                                <Button Content="Export Tasks CSV" Click="ExportTasksCsvButton_Click" />
+                                <Button Content="Export Tasks CSV" Click="ExportTasksCsvButton_Click" IsEnabled="{Binding CanExportData}" />
                             </WrapPanel>
                         </Grid>
                     </Border>
@@ -570,6 +577,7 @@
                                       AutoGenerateColumns="False"
                                       CanUserAddRows="False"
                                       IsReadOnly="True"
+                                      IsEnabled="{Binding CanViewAudit}"
                                       Height="620"
                                       GridLinesVisibility="Horizontal"
                                       HeadersVisibility="Column"
@@ -577,6 +585,7 @@
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Changed UTC" Binding="{Binding ChangedAtUtc, StringFormat=yyyy-MM-dd HH:mm}" Width="120" />
                                     <DataGridTextColumn Header="User" Binding="{Binding UserName}" Width="95" />
+                                    <DataGridTextColumn Header="Role" Binding="{Binding UserRole}" Width="90" />
                                     <DataGridTextColumn Header="Entity" Binding="{Binding EntityName}" Width="105" />
                                     <DataGridTextColumn Header="Action" Binding="{Binding Action}" Width="75" />
                                     <DataGridTextColumn Header="Field" Binding="{Binding FieldName}" Width="115" />
@@ -597,8 +606,8 @@
 
                     <Border Grid.Row="0" Style="{StaticResource PanelStyle}" Margin="0,0,0,10">
                         <WrapPanel>
-                            <Button Content="Export Equipment CSV" Click="ExportEquipmentCsvButton_Click" />
-                            <Button Content="Generate Text Report" Click="GenerateReportButton_Click" />
+                            <Button Content="Export Equipment CSV" Click="ExportEquipmentCsvButton_Click" IsEnabled="{Binding CanExportData}" />
+                            <Button Content="Generate Text Report" Click="GenerateReportButton_Click" IsEnabled="{Binding CanExportData}" />
                             <TextBlock VerticalAlignment="Center" Style="{StaticResource SecondaryTextStyle}" Text="{Binding LastExportMessage}" TextWrapping="Wrap" />
                         </WrapPanel>
                     </Border>
