@@ -19,6 +19,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly HealthScoreService _healthScoreService = new();
     private readonly TroubleshootingService _troubleshootingService = new();
     private readonly ExportService _exportService = new();
+    private readonly AnalyticsService _analyticsService = new();
     private readonly CsvImportService _csvImportService = new();
     private readonly NotificationService _notificationService = new();
     private readonly DesktopNotificationService _desktopNotificationService = new();
@@ -47,6 +48,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _reportPreview = "No report generated yet.";
     private string _historyNote = "Select equipment to focus its maintenance history.";
     private string _auditNote = "Audit events will appear after equipment changes.";
+    private string _analyticsNote = "Maintenance analytics appear after completed work is logged.";
+    private string _mtbfText = "--";
+    private string _mttrText = "--";
+    private string _maintenanceCostText = "$0";
+    private string _topCostDriverText = "No cost driver yet.";
+    private int _maintenanceEventCount;
     private string _alertSummary = "No active operational notifications.";
     private string _alertNote = "Critical and overdue equipment will appear here.";
     private string _troubleshootingEditorNote = "Select a symptom to edit its local guidance.";
@@ -80,6 +87,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public ObservableCollection<AuditLog> AuditTrail { get; } = new();
     public ObservableCollection<MaintenanceAlert> ActiveAlerts { get; } = new();
     public ObservableCollection<TroubleshootingRule> TroubleshootingRuleItems { get; } = new();
+    public ObservableCollection<EquipmentAnalyticsSummary> EquipmentAnalyticsItems { get; } = new();
+    public ObservableCollection<CategoryAnalyticsSummary> CategoryAnalyticsItems { get; } = new();
 
     public List<UserRole> RoleOptions { get; } = Enum.GetValues<UserRole>().ToList();
     public List<string> StatusFilterOptions { get; } = new() { "All", "Healthy", "Watch", "Critical" };
@@ -183,6 +192,42 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         get => _auditNote;
         set => SetProperty(ref _auditNote, value);
+    }
+
+    public string AnalyticsNote
+    {
+        get => _analyticsNote;
+        set => SetProperty(ref _analyticsNote, value);
+    }
+
+    public string MtbfText
+    {
+        get => _mtbfText;
+        set => SetProperty(ref _mtbfText, value);
+    }
+
+    public string MttrText
+    {
+        get => _mttrText;
+        set => SetProperty(ref _mttrText, value);
+    }
+
+    public string MaintenanceCostText
+    {
+        get => _maintenanceCostText;
+        set => SetProperty(ref _maintenanceCostText, value);
+    }
+
+    public string TopCostDriverText
+    {
+        get => _topCostDriverText;
+        set => SetProperty(ref _topCostDriverText, value);
+    }
+
+    public int MaintenanceEventCount
+    {
+        get => _maintenanceEventCount;
+        set => SetProperty(ref _maintenanceEventCount, value);
     }
 
     public string AlertSummary
@@ -374,6 +419,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         RefreshEquipmentGrid();
         RefreshScheduler();
         RefreshHistoryViews();
+        RefreshAnalytics();
     }
 
     private void RecalculateFleetHealth()
@@ -510,6 +556,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _auditLogStore.AddRange(auditLogs);
 
         RefreshHistoryViews();
+        RefreshAnalytics();
     }
 
     private void RefreshHistoryViews()
@@ -549,6 +596,38 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         AuditNote = AuditTrail.Count == 0
             ? "No audit events recorded yet."
             : $"{AuditTrail.Count} recent audit events shown.";
+    }
+
+    private void RefreshAnalytics()
+    {
+        var snapshot = _analyticsService.BuildSnapshot(
+            _equipmentStore,
+            _maintenanceLogStore,
+            _allTasks,
+            DateTime.Today);
+
+        EquipmentAnalyticsItems.Clear();
+        foreach (var summary in snapshot.EquipmentSummaries)
+        {
+            EquipmentAnalyticsItems.Add(summary);
+        }
+
+        CategoryAnalyticsItems.Clear();
+        foreach (var summary in snapshot.CategorySummaries)
+        {
+            CategoryAnalyticsItems.Add(summary);
+        }
+
+        MaintenanceEventCount = snapshot.MaintenanceEventCount;
+        MtbfText = snapshot.FleetAverageDaysBetweenMaintenance <= 0
+            ? "--"
+            : $"{snapshot.FleetAverageDaysBetweenMaintenance:F1} days";
+        MttrText = snapshot.MaintenanceEventCount == 0
+            ? "--"
+            : $"{snapshot.AverageRepairHours:F1} hrs";
+        MaintenanceCostText = snapshot.TotalMaintenanceCost.ToString("C0", CultureInfo.CurrentCulture);
+        TopCostDriverText = snapshot.TopCostDriver;
+        AnalyticsNote = snapshot.ReliabilityNote;
     }
 
     private void ApplySchedulerFilters()
