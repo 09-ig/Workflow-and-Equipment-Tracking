@@ -153,6 +153,73 @@ partial class AeroMaintainDbContextModelSnapshot : ModelSnapshot
             b.ToTable("MaintenanceLogs");
         });
 
+        modelBuilder.Entity("AeroMaintain.Models.MaintenanceAssignment", b =>
+        {
+            b.Property<Guid>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("TEXT");
+
+            b.Property<string>("ApprovedBy")
+                .IsRequired()
+                .HasColumnType("TEXT");
+
+            b.Property<DateTime?>("ApprovedAtUtc")
+                .HasColumnType("TEXT");
+
+            b.Property<string>("AssignedBy")
+                .IsRequired()
+                .HasColumnType("TEXT");
+
+            b.Property<string>("AssignedTo")
+                .IsRequired()
+                .HasColumnType("TEXT");
+
+            b.Property<Guid?>("CompletionMaintenanceLogId")
+                .HasColumnType("TEXT");
+
+            b.Property<DateTime?>("CompletedAtUtc")
+                .HasColumnType("TEXT");
+
+            b.Property<DateTime>("CreatedAtUtc")
+                .HasColumnType("TEXT");
+
+            b.Property<DateTime>("DueDate")
+                .HasColumnType("TEXT");
+
+            b.Property<Guid>("EquipmentId")
+                .HasColumnType("TEXT");
+
+            b.Property<string>("EquipmentName")
+                .IsRequired()
+                .HasColumnType("TEXT");
+
+            b.Property<string>("Notes")
+                .IsRequired()
+                .HasColumnType("TEXT");
+
+            b.Property<string>("Priority")
+                .IsRequired()
+                .HasColumnType("TEXT");
+
+            b.Property<string>("SerialNumber")
+                .IsRequired()
+                .HasColumnType("TEXT");
+
+            b.Property<string>("Status")
+                .IsRequired()
+                .HasColumnType("TEXT");
+
+            b.Property<string>("WorkSummary")
+                .IsRequired()
+                .HasColumnType("TEXT");
+
+            b.HasKey("Id");
+
+            b.HasIndex("EquipmentId", "Status", "DueDate");
+
+            b.ToTable("MaintenanceAssignments");
+        });
+
         modelBuilder.Entity("AeroMaintain.Models.TroubleshootingRule", b =>
         {
             b.Property<Guid>("Id")
@@ -177,6 +244,17 @@ partial class AeroMaintainDbContextModelSnapshot : ModelSnapshot
         });
 
         modelBuilder.Entity("AeroMaintain.Models.MaintenanceLog", b =>
+        {
+            b.HasOne("AeroMaintain.Models.Equipment", "Equipment")
+                .WithMany()
+                .HasForeignKey("EquipmentId")
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired();
+
+            b.Navigation("Equipment");
+        });
+
+        modelBuilder.Entity("AeroMaintain.Models.MaintenanceAssignment", b =>
         {
             b.HasOne("AeroMaintain.Models.Equipment", "Equipment")
                 .WithMany()

@@ -12,6 +12,7 @@ public class AeroMaintainDbContext : DbContext
     public DbSet<Equipment> Equipment { get; set; } = null!;
     public DbSet<TroubleshootingRule> TroubleshootingRules { get; set; } = null!;
     public DbSet<MaintenanceLog> MaintenanceLogs { get; set; } = null!;
+    public DbSet<MaintenanceAssignment> MaintenanceAssignments { get; set; } = null!;
     public DbSet<AuditLog> AuditLogs { get; set; } = null!;
 
     public AeroMaintainDbContext()
@@ -81,6 +82,22 @@ public class AeroMaintainDbContext : DbContext
 
         modelBuilder.Entity<MaintenanceLog>()
             .HasIndex(l => new { l.EquipmentId, l.CompletedOn });
+
+        modelBuilder.Entity<MaintenanceAssignment>()
+            .Property(a => a.Status)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<MaintenanceAssignment>()
+            .Ignore(a => a.IsOpen);
+
+        modelBuilder.Entity<MaintenanceAssignment>()
+            .HasOne(a => a.Equipment)
+            .WithMany()
+            .HasForeignKey(a => a.EquipmentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<MaintenanceAssignment>()
+            .HasIndex(a => new { a.EquipmentId, a.Status, a.DueDate });
 
         modelBuilder.Entity<AuditLog>()
             .HasIndex(a => a.ChangedAtUtc);

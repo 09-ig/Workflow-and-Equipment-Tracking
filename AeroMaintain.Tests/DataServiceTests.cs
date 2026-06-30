@@ -245,6 +245,145 @@ public class DataServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateAssignment_CreatesWorkOrderAndAuditEntry()
+    {
+        var equipment = new Equipment
+        {
+            Id = Guid.NewGuid(),
+            Name = "Assigned Pump",
+            SerialNumber = "ASSIGN-001",
+            Category = "Pump",
+            Status = EquipmentStatus.Watch
+        };
+
+        await _service.SaveEquipmentAsync([equipment], "setup");
+
+        var assignment = await _service.CreateAssignmentAsync(
+            equipment.Id,
+            "tech.two",
+            new DateTime(2026, 7, 10),
+            "Immediate",
+            "Inspect pump seal.",
+            "Visible seepage near housing.",
+            "supervisor",
+            UserRole.Supervisor);
+
+        var assignments = await _service.LoadAssignmentsAsync();
+        var loaded = Assert.Single(assignments);
+        Assert.Equal(assignment.Id, loaded.Id);
+        Assert.Equal(equipment.Id, loaded.EquipmentId);
+        Assert.Equal("tech.two", loaded.AssignedTo);
+        Assert.Equal("supervisor", loaded.AssignedBy);
+        Assert.Equal(MaintenanceAssignmentStatus.Assigned, loaded.Status);
+        Assert.Equal("Immediate", loaded.Priority);
+
+        var auditLogs = await _service.LoadAuditLogsAsync();
+        Assert.Contains(auditLogs, audit =>
+            audit.EntityName == nameof(MaintenanceAssignment) &&
+            audit.EntityId == assignment.Id &&
+            audit.Action == "Created" &&
+            audit.UserRole == nameof(UserRole.Supervisor));
+    }
+
+    [Fact]
+    public async Task UpdateAssignmentStatus_ApprovesWorkOrderAndWritesAuditEntry()
+    {
+        var equipment = new Equipment
+        {
+            Id = Guid.NewGuid(),
+            Name = "Approval Generator",
+            SerialNumber = "APP-001",
+            Category = "Generator",
+            Status = EquipmentStatus.Healthy
+        };
+
+        await _service.SaveEquipmentAsync([equipment], "setup");
+        var assignment = await _service.CreateAssignmentAsync(
+            equipment.Id,
+            "tech.three",
+            new DateTime(2026, 7, 11),
+            "Monitor",
+            "Check generator vibration.",
+            string.Empty,
+            "supervisor",
+            UserRole.Supervisor);
+
+        await _service.UpdateAssignmentStatusAsync(
+            assignment.Id,
+            MaintenanceAssignmentStatus.Approved,
+            "lead.supervisor",
+            UserRole.Supervisor);
+
+        var loaded = Assert.Single(await _service.LoadAssignmentsAsync());
+        Assert.Equal(MaintenanceAssignmentStatus.Approved, loaded.Status);
+        Assert.Equal("lead.supervisor", loaded.ApprovedBy);
+        Assert.NotNull(loaded.ApprovedAtUtc);
+
+        var auditLogs = await _service.LoadAuditLogsAsync();
+        Assert.Contains(auditLogs, audit =>
+            audit.EntityName == nameof(MaintenanceAssignment) &&
+            audit.EntityId == assignment.Id &&
+            audit.FieldName == nameof(MaintenanceAssignment.Status) &&
+            audit.OldValue == nameof(MaintenanceAssignmentStatus.Assigned) &&
+            audit.NewValue == nameof(MaintenanceAssignmentStatus.Approved));
+    }
+
+    [Fact]
+    public async Task RecordMaintenance_CompletesEarliestOpenAssignment()
+    {
+        var equipment = new Equipment
+        {
+            Id = Guid.NewGuid(),
+            Name = "Completion Compressor",
+            SerialNumber = "COMP-001",
+            Category = "Compressor",
+            Status = EquipmentStatus.Watch,
+            LastMaintenanceDate = new DateTime(2026, 6, 1)
+        };
+
+        await _service.SaveEquipmentAsync([equipment], "setup");
+        var assignment = await _service.CreateAssignmentAsync(
+            equipment.Id,
+            "tech.four",
+            new DateTime(2026, 7, 12),
+            "Routine",
+            "Complete compressor service.",
+            string.Empty,
+            "supervisor",
+            UserRole.Supervisor);
+
+        await _service.UpdateAssignmentStatusAsync(
+            assignment.Id,
+            MaintenanceAssignmentStatus.Approved,
+            "supervisor",
+            UserRole.Supervisor);
+
+        var log = await _service.RecordMaintenanceAsync(
+            equipment.Id,
+            "tech.four",
+            "Compressor service completed.",
+            "None",
+            0,
+            1.25,
+            new DateTime(2026, 7, 12),
+            string.Empty,
+            "tech.four",
+            UserRole.Technician);
+
+        var loaded = Assert.Single(await _service.LoadAssignmentsAsync());
+        Assert.Equal(MaintenanceAssignmentStatus.Completed, loaded.Status);
+        Assert.Equal(log.Id, loaded.CompletionMaintenanceLogId);
+        Assert.NotNull(loaded.CompletedAtUtc);
+
+        var auditLogs = await _service.LoadAuditLogsAsync();
+        Assert.Contains(auditLogs, audit =>
+            audit.EntityName == nameof(MaintenanceAssignment) &&
+            audit.EntityId == assignment.Id &&
+            audit.NewValue == nameof(MaintenanceAssignmentStatus.Completed) &&
+            audit.UserRole == nameof(UserRole.Technician));
+    }
+
+    [Fact]
     public async Task Constructor_BaselinesLegacyDatabaseAndAppliesProductionLoggingMigration()
     {
         var legacyDbPath = Path.Combine(_tempDir, "legacy.db");

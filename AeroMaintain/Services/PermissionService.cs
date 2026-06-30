@@ -16,6 +16,7 @@ public class PermissionService
                 UserPermission.ImportEquipment or
                 UserPermission.ExportData or
                 UserPermission.ViewAuditTrail or
+                UserPermission.ManageWorkOrders or
                 UserPermission.ManageTroubleshooting,
             UserRole.Technician => permission is
                 UserPermission.ViewEquipment or
@@ -28,8 +29,8 @@ public class PermissionService
     {
         return role switch
         {
-            UserRole.Technician => "Technician: view equipment and log completed work.",
-            UserRole.Supervisor => "Supervisor: edit equipment, import records, export data, and review audit history.",
+            UserRole.Technician => "Technician: view equipment and log completed assigned work.",
+            UserRole.Supervisor => "Supervisor: edit equipment, manage work orders, import records, export data, and review audit history.",
             UserRole.Admin => "Admin: full access including equipment deletion and configuration.",
             _ => "Unknown role."
         };

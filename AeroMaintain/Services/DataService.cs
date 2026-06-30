@@ -219,6 +219,128 @@ public class DataService
             .ToListAsync();
     }
 
+    public async Task<List<MaintenanceAssignment>> LoadAssignmentsAsync(int take = 300)
+    {
+        await using var ctx = CreateContext();
+        return await ctx.MaintenanceAssignments
+            .AsNoTracking()
+            .OrderBy(a => a.Status == MaintenanceAssignmentStatus.Completed || a.Status == MaintenanceAssignmentStatus.Cancelled)
+            .ThenBy(a => a.DueDate)
+            .ThenByDescending(a => a.CreatedAtUtc)
+            .Take(take)
+            .ToListAsync();
+    }
+
+    public async Task<MaintenanceAssignment> CreateAssignmentAsync(
+        Guid equipmentId,
+        string assignedTo,
+        DateTime dueDate,
+        string priority,
+        string workSummary,
+        string notes,
+        string? actor = null,
+        UserRole actorRole = UserRole.Admin)
+    {
+        await using var ctx = CreateContext();
+        await using var transaction = await ctx.Database.BeginTransactionAsync();
+
+        var equipment = await ctx.Equipment.FirstOrDefaultAsync(e => e.Id == equipmentId);
+        if (equipment is null)
+        {
+            throw new InvalidOperationException("Equipment was not found.");
+        }
+
+        var userName = NormalizeActor(actor);
+        var roleName = actorRole.ToString();
+        var changedAtUtc = DateTime.UtcNow;
+        var assignment = new MaintenanceAssignment
+        {
+            Id = Guid.NewGuid(),
+            EquipmentId = equipment.Id,
+            EquipmentName = equipment.Name,
+            SerialNumber = equipment.SerialNumber,
+            AssignedTo = NormalizeActor(assignedTo),
+            AssignedBy = userName,
+            DueDate = dueDate.Date,
+            Priority = NormalizeText(priority, "Routine"),
+            WorkSummary = NormalizeText(workSummary, "Scheduled maintenance check."),
+            Notes = notes.Trim(),
+            Status = MaintenanceAssignmentStatus.Assigned,
+            CreatedAtUtc = changedAtUtc
+        };
+
+        ctx.MaintenanceAssignments.Add(assignment);
+        ctx.AuditLogs.Add(CreateAudit(
+            nameof(MaintenanceAssignment),
+            assignment.Id,
+            "Created",
+            "*",
+            null,
+            assignment.WorkSummary,
+            $"Work order assigned to {assignment.AssignedTo} for {assignment.EquipmentName}.",
+            userName,
+            roleName,
+            changedAtUtc));
+
+        await ctx.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return assignment;
+    }
+
+    public async Task<MaintenanceAssignment> UpdateAssignmentStatusAsync(
+        Guid assignmentId,
+        MaintenanceAssignmentStatus status,
+        string? actor = null,
+        UserRole actorRole = UserRole.Admin)
+    {
+        if (status is MaintenanceAssignmentStatus.Completed)
+        {
+            throw new InvalidOperationException("Log maintenance to complete a work order.");
+        }
+
+        await using var ctx = CreateContext();
+        await using var transaction = await ctx.Database.BeginTransactionAsync();
+
+        var assignment = await ctx.MaintenanceAssignments.FirstOrDefaultAsync(a => a.Id == assignmentId);
+        if (assignment is null)
+        {
+            throw new InvalidOperationException("Work order was not found.");
+        }
+
+        if (assignment.Status is MaintenanceAssignmentStatus.Completed or MaintenanceAssignmentStatus.Cancelled)
+        {
+            throw new InvalidOperationException("Closed work orders cannot be changed.");
+        }
+
+        var userName = NormalizeActor(actor);
+        var roleName = actorRole.ToString();
+        var changedAtUtc = DateTime.UtcNow;
+        var previousStatus = assignment.Status;
+
+        assignment.Status = status;
+        if (status == MaintenanceAssignmentStatus.Approved)
+        {
+            assignment.ApprovedBy = userName;
+            assignment.ApprovedAtUtc = changedAtUtc;
+        }
+
+        ctx.AuditLogs.Add(CreateAudit(
+            nameof(MaintenanceAssignment),
+            assignment.Id,
+            "Updated",
+            nameof(MaintenanceAssignment.Status),
+            previousStatus.ToString(),
+            status.ToString(),
+            $"Work order for {assignment.EquipmentName} changed to {status}.",
+            userName,
+            roleName,
+            changedAtUtc));
+
+        await ctx.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return assignment;
+    }
+
     public async Task<MaintenanceLog> RecordMaintenanceAsync(
         Guid equipmentId,
         string performedBy,
@@ -274,6 +396,7 @@ public class DataService
         };
 
         ctx.MaintenanceLogs.Add(log);
+        CompleteOpenAssignmentForEquipment(ctx, equipment.Id, log, userName, roleName, changedAtUtc);
         ctx.AuditLogs.Add(CreateAudit(
             nameof(MaintenanceLog),
             log.Id,
@@ -304,6 +427,45 @@ public class DataService
         await ctx.SaveChangesAsync();
         await transaction.CommitAsync();
         return log;
+    }
+
+    private static void CompleteOpenAssignmentForEquipment(
+        AeroMaintainDbContext ctx,
+        Guid equipmentId,
+        MaintenanceLog log,
+        string userName,
+        string roleName,
+        DateTime changedAtUtc)
+    {
+        var assignment = ctx.MaintenanceAssignments
+            .Where(a =>
+                a.EquipmentId == equipmentId &&
+                (a.Status == MaintenanceAssignmentStatus.Approved || a.Status == MaintenanceAssignmentStatus.Assigned))
+            .OrderBy(a => a.Status == MaintenanceAssignmentStatus.Approved ? 0 : 1)
+            .ThenBy(a => a.DueDate)
+            .FirstOrDefault();
+
+        if (assignment is null)
+        {
+            return;
+        }
+
+        var previousStatus = assignment.Status;
+        assignment.Status = MaintenanceAssignmentStatus.Completed;
+        assignment.CompletedAtUtc = changedAtUtc;
+        assignment.CompletionMaintenanceLogId = log.Id;
+
+        ctx.AuditLogs.Add(CreateAudit(
+            nameof(MaintenanceAssignment),
+            assignment.Id,
+            "Updated",
+            nameof(MaintenanceAssignment.Status),
+            previousStatus.ToString(),
+            MaintenanceAssignmentStatus.Completed.ToString(),
+            $"Work order completed from maintenance log for {assignment.EquipmentName}.",
+            userName,
+            roleName,
+            changedAtUtc));
     }
 
     private async Task SeedEquipmentFromJsonAsync()

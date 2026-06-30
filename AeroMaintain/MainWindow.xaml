@@ -474,6 +474,117 @@
                 </Grid>
             </TabItem>
 
+            <TabItem Header="Work Orders">
+                <Grid Margin="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="360" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource PanelStyle}" Margin="0,0,12,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Assign Technician" />
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,4,0,12"
+                                       Text="Create a work order from the selected equipment record, then approve it for technician execution." TextWrapping="Wrap" />
+
+                            <TextBlock Text="Assigned To" />
+                            <TextBox x:Name="AssignmentTechnicianTextBox" Margin="0,4,0,8" IsEnabled="{Binding CanManageWorkOrders}" />
+
+                            <TextBlock Text="Due Date" />
+                            <DatePicker x:Name="AssignmentDueDatePicker" Margin="0,4,0,8" IsEnabled="{Binding CanManageWorkOrders}" />
+
+                            <TextBlock Text="Priority" />
+                            <ComboBox x:Name="AssignmentPriorityComboBox" Margin="0,4,0,8" SelectedIndex="0" IsEnabled="{Binding CanManageWorkOrders}">
+                                <ComboBoxItem Content="Routine" />
+                                <ComboBoxItem Content="Monitor" />
+                                <ComboBoxItem Content="Immediate" />
+                            </ComboBox>
+
+                            <TextBlock Text="Work Summary" />
+                            <TextBox x:Name="AssignmentSummaryTextBox" Margin="0,4,0,8" Height="82"
+                                     TextWrapping="Wrap" AcceptsReturn="True" IsEnabled="{Binding CanManageWorkOrders}" />
+
+                            <TextBlock Text="Notes" />
+                            <TextBox x:Name="AssignmentNotesTextBox" Margin="0,4,0,12" Height="72"
+                                     TextWrapping="Wrap" AcceptsReturn="True" IsEnabled="{Binding CanManageWorkOrders}" />
+
+                            <WrapPanel>
+                                <Button Content="Create Work Order" Click="CreateAssignmentButton_Click" IsEnabled="{Binding CanManageWorkOrders}" />
+                            </WrapPanel>
+                            <WrapPanel Margin="0,6,0,0">
+                                <Button Content="Approve Selected" Click="ApproveAssignmentButton_Click" IsEnabled="{Binding CanManageWorkOrders}" />
+                                <Button Content="Cancel Selected" Click="CancelAssignmentButton_Click" IsEnabled="{Binding CanManageWorkOrders}" />
+                            </WrapPanel>
+
+                            <Separator Margin="0,14,0,12" />
+                            <UniformGrid Columns="3">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Open" />
+                                    <TextBlock FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource GraphiteBrush}" Text="{Binding AssignmentOpenCount}" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Approved" />
+                                    <TextBlock FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource GraphiteBrush}" Text="{Binding AssignmentApprovedCount}" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SecondaryTextStyle}" Text="Done" />
+                                    <TextBlock FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource GraphiteBrush}" Text="{Binding AssignmentCompletedCount}" />
+                                </StackPanel>
+                            </UniformGrid>
+
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,12,0,0"
+                                       Text="{Binding AssignmentNote}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="1" Style="{StaticResource PanelStyle}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Assignment Queue" />
+                            <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,4,0,10"
+                                       Text="Logging maintenance for assigned equipment closes the earliest approved or open work order." TextWrapping="Wrap" />
+
+                            <DataGrid ItemsSource="{Binding MaintenanceAssignments}"
+                                      SelectedItem="{Binding SelectedAssignment}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      IsReadOnly="True"
+                                      Height="610"
+                                      GridLinesVisibility="Horizontal"
+                                      HeadersVisibility="Column"
+                                      BorderBrush="#CBC6BA">
+                                <DataGrid.RowStyle>
+                                    <Style TargetType="DataGridRow">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Status}" Value="Approved">
+                                                <Setter Property="Background" Value="#E1E8D8" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                                                <Setter Property="Background" Value="#ECE8DF" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Status}" Value="Completed">
+                                                <Setter Property="Background" Value="#DCE5E9" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGrid.RowStyle>
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Due" Binding="{Binding DueDate, StringFormat=yyyy-MM-dd}" Width="95" />
+                                    <DataGridTextColumn Header="Equipment" Binding="{Binding EquipmentName}" Width="150" />
+                                    <DataGridTextColumn Header="Serial" Binding="{Binding SerialNumber}" Width="95" />
+                                    <DataGridTextColumn Header="Technician" Binding="{Binding AssignedTo}" Width="115" />
+                                    <DataGridTextColumn Header="Priority" Binding="{Binding Priority}" Width="85" />
+                                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90" />
+                                    <DataGridTextColumn Header="Summary" Binding="{Binding WorkSummary}" Width="*" />
+                                    <DataGridTextColumn Header="Assigned By" Binding="{Binding AssignedBy}" Width="105" />
+                                    <DataGridTextColumn Header="Approved By" Binding="{Binding ApprovedBy}" Width="105" />
+                                    <DataGridTextColumn Header="Completed UTC" Binding="{Binding CompletedAtUtc, StringFormat=yyyy-MM-dd HH:mm}" Width="125" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
             <TabItem Header="Guided Troubleshooting">
                 <Grid Margin="12">
                     <Grid.ColumnDefinitions>

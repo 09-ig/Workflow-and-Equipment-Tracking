@@ -1,6 +1,6 @@
 # AeroMaintain App
 
-WPF desktop app for equipment registry management, maintenance scheduling, operational notifications, role-based access control, maintenance completion history, audit logging, editable troubleshooting guidance, shared database configuration, maintenance analytics, and operational exports.
+WPF desktop app for equipment registry management, maintenance scheduling, technician work orders, supervisor approval, operational notifications, role-based access control, maintenance completion history, audit logging, editable troubleshooting guidance, shared database configuration, maintenance analytics, and operational exports.
 
 ## Runtime Data
 
@@ -15,19 +15,20 @@ WPF desktop app for equipment registry management, maintenance scheduling, opera
 - `Data/AeroMaintainDbContext.cs`: EF Core model configuration.
 - `Data/DatabaseSettings.cs`: SQLite/SQL Server provider resolution.
 - `Data/database.settings.example.json`: SQL Server Express example configuration.
-- `Migrations/`: baseline equipment schema plus maintenance/audit logging migration.
+- `Migrations/`: baseline equipment schema plus maintenance/audit logging and work order migrations.
 - `Models/Equipment.cs`: persisted equipment entity.
 - `Models/MaintenanceLog.cs`: completed maintenance history.
+- `Models/MaintenanceAssignment.cs`: technician work orders with approval and completion status.
 - `Models/MaintenanceAlert.cs`: active operational notification read model.
 - `Models/AuditLog.cs`: create/update/delete audit records.
 - `Models/UserRole.cs` and `Models/UserPermission.cs`: role and permission primitives.
-- `Services/DataService.cs`: migrations, seed loading, equipment persistence, maintenance logging, and audit writes.
+- `Services/DataService.cs`: migrations, seed loading, equipment persistence, work order persistence, maintenance logging, and audit writes.
 - `Services/PermissionService.cs`: role-permission matrix.
 - `Services/NotificationService.cs`: builds critical, warning, and info alerts from maintenance tasks.
 - `Services/DesktopNotificationService.cs`: sends Windows tray-style alert summaries.
 - `Services/TroubleshootingService.cs`: symptom lookup and multiline editor parsing.
 - `Services/AnalyticsService.cs`: calculates MTBF-style intervals, MTTR-style labor averages, cost totals, and category risk summaries.
-- `MainWindow.xaml`: dashboard, registry, scheduler, troubleshooting, history/audit, analytics, and export tabs.
+- `MainWindow.xaml`: dashboard, registry, scheduler, work orders, troubleshooting, history/audit, analytics, and export tabs.
 
 ## Local Run
 
@@ -37,4 +38,4 @@ dotnet run --project AeroMaintain
 
 ## Notes
 
-The app is still local/single-user, but the persistence foundation now supports future production work such as role-based authentication, email or Teams alert routing, technician assignment workflows, and supervisor approval rules.
+The app is still local/single-user, but the persistence foundation now supports future production work such as role-based authentication, email or Teams alert routing, backup/restore, and deployment packaging.

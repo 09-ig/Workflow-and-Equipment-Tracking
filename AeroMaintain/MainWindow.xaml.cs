@@ -29,6 +29,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly List<TroubleshootingRule> _rules = new();
     private readonly List<MaintenanceLog> _maintenanceLogStore = new();
     private readonly List<AuditLog> _auditLogStore = new();
+    private readonly List<MaintenanceAssignment> _assignmentStore = new();
     private List<MaintenanceTask> _allTasks = new();
     private Guid? _editingEquipmentId;
 
@@ -43,6 +44,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _registryNote = "Add your first equipment entry to start the workflow.";
     private string _fleetEmptyState = "No equipment registered yet.";
     private string _schedulerNote = "No maintenance tasks available.";
+    private string _assignmentNote = "Select equipment and assign a technician to create a work order.";
     private string _selectedSymptomTitle = "Guided Checks";
     private string _lastExportMessage = "Exports will be saved under the local Exports folder.";
     private string _reportPreview = "No report generated yet.";
@@ -54,6 +56,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private string _maintenanceCostText = "$0";
     private string _topCostDriverText = "No cost driver yet.";
     private int _maintenanceEventCount;
+    private int _assignmentOpenCount;
+    private int _assignmentApprovedCount;
+    private int _assignmentCompletedCount;
     private string _alertSummary = "No active operational notifications.";
     private string _alertNote = "Critical and overdue equipment will appear here.";
     private string _troubleshootingEditorNote = "Select a symptom to edit its local guidance.";
@@ -72,6 +77,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private bool _canImportEquipment;
     private bool _canExportData;
     private bool _canViewAudit;
+    private bool _canManageWorkOrders;
     private bool _canManageTroubleshooting;
     private bool _startupNotificationShown;
 
@@ -85,6 +91,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public ObservableCollection<string> RecommendedChecks { get; } = new();
     public ObservableCollection<MaintenanceLog> MaintenanceHistory { get; } = new();
     public ObservableCollection<AuditLog> AuditTrail { get; } = new();
+    public ObservableCollection<MaintenanceAssignment> MaintenanceAssignments { get; } = new();
     public ObservableCollection<MaintenanceAlert> ActiveAlerts { get; } = new();
     public ObservableCollection<TroubleshootingRule> TroubleshootingRuleItems { get; } = new();
     public ObservableCollection<EquipmentAnalyticsSummary> EquipmentAnalyticsItems { get; } = new();
@@ -95,6 +102,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public List<string> DueFilterOptions { get; } = new() { "All", "Overdue", "Due within 7 days", "Due within 30 days" };
 
     public Equipment? SelectedEquipment { get; set; }
+    public MaintenanceAssignment? SelectedAssignment { get; set; }
 
     public string TodayLabel => DateTime.Today.ToString("dd MMM yyyy");
 
@@ -164,6 +172,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         set => SetProperty(ref _schedulerNote, value);
     }
 
+    public string AssignmentNote
+    {
+        get => _assignmentNote;
+        set => SetProperty(ref _assignmentNote, value);
+    }
+
     public string SelectedSymptomTitle
     {
         get => _selectedSymptomTitle;
@@ -228,6 +242,24 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         get => _maintenanceEventCount;
         set => SetProperty(ref _maintenanceEventCount, value);
+    }
+
+    public int AssignmentOpenCount
+    {
+        get => _assignmentOpenCount;
+        set => SetProperty(ref _assignmentOpenCount, value);
+    }
+
+    public int AssignmentApprovedCount
+    {
+        get => _assignmentApprovedCount;
+        set => SetProperty(ref _assignmentApprovedCount, value);
+    }
+
+    public int AssignmentCompletedCount
+    {
+        get => _assignmentCompletedCount;
+        set => SetProperty(ref _assignmentCompletedCount, value);
     }
 
     public string AlertSummary
@@ -322,6 +354,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         set => SetProperty(ref _canViewAudit, value);
     }
 
+    public bool CanManageWorkOrders
+    {
+        get => _canManageWorkOrders;
+        set => SetProperty(ref _canManageWorkOrders, value);
+    }
+
     public bool CanManageTroubleshooting
     {
         get => _canManageTroubleshooting;
@@ -364,6 +402,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         MaintenancePartsTextBox.Text = "None";
         MaintenanceLaborHoursTextBox.Text = "0";
         MaintenanceCostTextBox.Text = "0";
+        AssignmentTechnicianTextBox.Text = Environment.UserName;
+        AssignmentDueDatePicker.SelectedDate = DateTime.Today.AddDays(7);
+        AssignmentSummaryTextBox.Text = "Scheduled maintenance check.";
         DatabaseModeLabel = _dataService.Settings.Describe();
         DatabaseConfigNote = $"Settings file: {DatabaseSettings.ResolveSettingsFilePath()}";
         RefreshPermissions();
@@ -411,6 +452,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         var auditLogs = await _dataService.LoadAuditLogsAsync(500);
         _auditLogStore.Clear();
         _auditLogStore.AddRange(auditLogs);
+
+        var assignments = await _dataService.LoadAssignmentsAsync();
+        _assignmentStore.Clear();
+        _assignmentStore.AddRange(assignments);
     }
 
     private void RefreshAllViews()
@@ -418,6 +463,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         RecalculateFleetHealth();
         RefreshEquipmentGrid();
         RefreshScheduler();
+        RefreshAssignments();
         RefreshHistoryViews();
         RefreshAnalytics();
     }
@@ -515,6 +561,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         CanImportEquipment = _permissionService.HasPermission(SelectedRole, UserPermission.ImportEquipment);
         CanExportData = _permissionService.HasPermission(SelectedRole, UserPermission.ExportData);
         CanViewAudit = _permissionService.HasPermission(SelectedRole, UserPermission.ViewAuditTrail);
+        CanManageWorkOrders = _permissionService.HasPermission(SelectedRole, UserPermission.ManageWorkOrders);
         CanManageTroubleshooting = _permissionService.HasPermission(SelectedRole, UserPermission.ManageTroubleshooting);
         RefreshHistoryViews();
     }
@@ -555,6 +602,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _auditLogStore.Clear();
         _auditLogStore.AddRange(auditLogs);
 
+        var assignments = await _dataService.LoadAssignmentsAsync();
+        _assignmentStore.Clear();
+        _assignmentStore.AddRange(assignments);
+
+        RefreshAssignments();
         RefreshHistoryViews();
         RefreshAnalytics();
     }
@@ -596,6 +648,27 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         AuditNote = AuditTrail.Count == 0
             ? "No audit events recorded yet."
             : $"{AuditTrail.Count} recent audit events shown.";
+    }
+
+    private void RefreshAssignments()
+    {
+        MaintenanceAssignments.Clear();
+
+        foreach (var assignment in _assignmentStore
+                     .OrderBy(a => a.Status == MaintenanceAssignmentStatus.Completed || a.Status == MaintenanceAssignmentStatus.Cancelled)
+                     .ThenBy(a => a.DueDate)
+                     .ThenByDescending(a => a.CreatedAtUtc))
+        {
+            MaintenanceAssignments.Add(assignment);
+        }
+
+        AssignmentOpenCount = _assignmentStore.Count(a => a.IsOpen);
+        AssignmentApprovedCount = _assignmentStore.Count(a => a.Status == MaintenanceAssignmentStatus.Approved);
+        AssignmentCompletedCount = _assignmentStore.Count(a => a.Status == MaintenanceAssignmentStatus.Completed);
+
+        AssignmentNote = _assignmentStore.Count == 0
+            ? "No work orders yet. Select equipment and assign a technician."
+            : $"{AssignmentOpenCount} open work orders, {AssignmentApprovedCount} approved, {AssignmentCompletedCount} completed.";
     }
 
     private void RefreshAnalytics()
@@ -812,6 +885,114 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
+    private async void CreateAssignmentButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!TryRequirePermission(UserPermission.ManageWorkOrders, "create work orders"))
+        {
+            return;
+        }
+
+        if (SelectedEquipment is null)
+        {
+            AssignmentNote = "Select equipment first, then create a work order.";
+            return;
+        }
+
+        var existing = _equipmentStore.FirstOrDefault(eq => eq.Id == SelectedEquipment.Id);
+        if (existing is null)
+        {
+            AssignmentNote = "Selected equipment no longer exists.";
+            return;
+        }
+
+        if (!TryBuildAssignmentDetails(
+                out var assignedTo,
+                out var dueDate,
+                out var priority,
+                out var summary,
+                out var notes))
+        {
+            return;
+        }
+
+        try
+        {
+            var assignment = await _dataService.CreateAssignmentAsync(
+                existing.Id,
+                assignedTo,
+                dueDate,
+                priority,
+                summary,
+                notes,
+                Environment.UserName,
+                SelectedRole);
+
+            await RefreshProductionRecordsAsync();
+            AssignmentNote = $"Work order assigned to {assignment.AssignedTo} for {assignment.EquipmentName}.";
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                $"Failed to create work order.\n\n{ex.Message}",
+                "Work Order Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private async void ApproveAssignmentButton_Click(object sender, RoutedEventArgs e)
+    {
+        await UpdateSelectedAssignmentStatusAsync(
+            MaintenanceAssignmentStatus.Approved,
+            "approve work orders",
+            "Work order approved.");
+    }
+
+    private async void CancelAssignmentButton_Click(object sender, RoutedEventArgs e)
+    {
+        await UpdateSelectedAssignmentStatusAsync(
+            MaintenanceAssignmentStatus.Cancelled,
+            "cancel work orders",
+            "Work order cancelled.");
+    }
+
+    private async Task UpdateSelectedAssignmentStatusAsync(
+        MaintenanceAssignmentStatus status,
+        string action,
+        string successMessage)
+    {
+        if (!TryRequirePermission(UserPermission.ManageWorkOrders, action))
+        {
+            return;
+        }
+
+        if (SelectedAssignment is null)
+        {
+            AssignmentNote = "Select a work order first.";
+            return;
+        }
+
+        try
+        {
+            var assignment = await _dataService.UpdateAssignmentStatusAsync(
+                SelectedAssignment.Id,
+                status,
+                Environment.UserName,
+                SelectedRole);
+
+            await RefreshProductionRecordsAsync();
+            AssignmentNote = $"{successMessage} {assignment.EquipmentName} is now {assignment.Status}.";
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                $"Failed to update work order.\n\n{ex.Message}",
+                "Work Order Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
     private void ClearForm()
     {
         _editingEquipmentId = null;
@@ -835,6 +1016,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         MaintenanceLaborHoursTextBox.Text = "0";
         MaintenanceCostTextBox.Text = "0";
         MaintenanceNotesTextBox.Text = string.Empty;
+        AssignmentTechnicianTextBox.Text = Environment.UserName;
+        AssignmentDueDatePicker.SelectedDate = DateTime.Today.AddDays(7);
+        AssignmentSummaryTextBox.Text = "Scheduled maintenance check.";
+        AssignmentNotesTextBox.Text = string.Empty;
+        if (AssignmentPriorityComboBox.Items.Count > 0)
+        {
+            AssignmentPriorityComboBox.SelectedIndex = 0;
+        }
         EquipmentDataGrid.SelectedItem = null;
         SelectedEquipment = null;
         RefreshHistoryViews();
@@ -857,6 +1046,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         SetComboBoxSelection(StatusComboBox, selected.Status.ToString());
         IssueCountTextBox.Text = selected.RecentIssueCount.ToString();
         NotesTextBox.Text = selected.Notes;
+        AssignmentSummaryTextBox.Text = $"Scheduled maintenance check for {selected.Name}.";
         RegistryNote = $"Editing {selected.Name}. Click Save Equipment to apply updates.";
         RefreshHistoryViews();
     }
@@ -1340,6 +1530,46 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             && (!decimal.TryParse(costText, NumberStyles.Currency, CultureInfo.CurrentCulture, out cost) || cost < 0))
         {
             RegistryNote = "Maintenance cost must be a non-negative number.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool TryBuildAssignmentDetails(
+        out string assignedTo,
+        out DateTime dueDate,
+        out string priority,
+        out string summary,
+        out string notes)
+    {
+        assignedTo = AssignmentTechnicianTextBox.Text.Trim();
+        dueDate = AssignmentDueDatePicker.SelectedDate ?? DateTime.MinValue;
+        priority = (AssignmentPriorityComboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Routine";
+        summary = AssignmentSummaryTextBox.Text.Trim();
+        notes = AssignmentNotesTextBox.Text.Trim();
+
+        if (string.IsNullOrWhiteSpace(assignedTo))
+        {
+            AssignmentNote = "Technician name is required.";
+            return false;
+        }
+
+        if (dueDate == DateTime.MinValue)
+        {
+            AssignmentNote = "Due date is required.";
+            return false;
+        }
+
+        if (dueDate.Date < DateTime.Today)
+        {
+            AssignmentNote = "Due date cannot be in the past.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(summary))
+        {
+            AssignmentNote = "Work summary is required.";
             return false;
         }
 
